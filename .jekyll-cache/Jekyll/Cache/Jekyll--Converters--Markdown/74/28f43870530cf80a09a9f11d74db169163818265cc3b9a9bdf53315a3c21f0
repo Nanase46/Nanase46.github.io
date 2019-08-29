@@ -1,0 +1,264 @@
+I"�@<p>ELK-使用消息队列进行扩展 Logstash</p>
+
+<h1 id="logstash-支持消息队列">Logstash 支持消息队列</h1>
+
+<p>当我们在大规模的场景下收集日志时，很有可能收集日志的速度比日志写入 ES 中的速度快很多。<br />
+这时我们可以使用一个消息队列作为缓冲。<br />
+Logstash 支持的消息队列插件有 kafka/Redis/rabbitmq 等，可以用于 Input 或 Output 插件。</p>
+
+<p>本文以 Redis 作为消息队列演示收集 Apache 访问日志。</p>
+
+<h1 id="1-redis-安装配置">1. Redis 安装配置</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 在 192.168.56.12 上安装 redis</span>
+
+yum <span class="nb">install</span> <span class="nt">-y</span> redis
+
+<span class="c"># 配置 redis.conf 以下参数</span>
+
+vim /etc/redis.conf
+daemonize <span class="nb">yes
+bind </span>192.168.56.12
+
+systemctl start redis
+netstat <span class="nt">-lntp</span>
+
+<span class="c"># 连接 redis 进行测试</span>
+
+<span class="o">[</span>root@linux-node2 ~]# redis-cli <span class="nt">-h</span> 192.168.56.12 <span class="nt">-p</span> 6379
+192.168.56.12:6379&gt; info
+...省略输出...
+192.168.56.12:6379&gt; <span class="nb">set </span>test-key <span class="nb">test
+</span>OK
+192.168.56.12:6379&gt; get test-key
+<span class="s2">"test"</span>
+192.168.56.12:6379&gt; keys <span class="k">*</span>		<span class="c"># 生产环境下不要这样列出所有 key</span>
+1<span class="o">)</span> <span class="s2">"test-key"</span>
+</code></pre></div></div>
+
+<h1 id="2-在-1921685611-前台运行-logstash-测试收集数据并写入-redis">2. 在 192.168.56.11 前台运行 Logstash 测试收集数据并写入 Redis</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 conf.d]# <span class="nb">cat </span>redis.conf
+input <span class="o">{</span>
+   stdin <span class="o">{}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  redis <span class="o">{</span>
+    host <span class="o">=&gt;</span> <span class="s2">"192.168.56.12"</span>
+    port <span class="o">=&gt;</span> 6379
+    db <span class="o">=&gt;</span> 6
+    data_type <span class="o">=&gt;</span> <span class="s2">"list"</span>
+    key <span class="o">=&gt;</span> <span class="s2">"demo"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c"># 以上 output 部分使用 redis 插件将标准输入的数据写到 redis 中的 db:6 key:"demo"，数据类型为 list</span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# /opt/logstash/bin/logstash <span class="nt">-f</span> redis.conf
+Settings: Default pipeline workers: 1
+Pipeline main started
+test1	<span class="c"># 输入测试数据</span>
+test2
+test3
+
+<span class="c"># 在 192.168.56.12 上确认上面输入的数据写入到 redis</span>
+
+192.168.56.12:6379[6]&gt; keys <span class="k">*</span>
+1<span class="o">)</span> <span class="s2">"demo"</span>
+192.168.56.12:6379&gt; <span class="k">select </span>6
+OK
+192.168.56.12:6379[6]&gt; <span class="nb">type </span>demo
+list
+192.168.56.12:6379[6]&gt; llen demo
+<span class="o">(</span>integer<span class="o">)</span> 3
+192.168.56.12:6379[6]&gt; lindex demo <span class="nt">-1</span>
+<span class="s2">"{</span><span class="se">\"</span><span class="s2">message</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">test3</span><span class="se">\"</span><span class="s2">,</span><span class="se">\"</span><span class="s2">@version</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">1</span><span class="se">\"</span><span class="s2">,</span><span class="se">\"</span><span class="s2">@timestamp</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">2016-10-11T08:21:58.531Z</span><span class="se">\"</span><span class="s2">,</span><span class="se">\"</span><span class="s2">host</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">linux-node1</span><span class="se">\"</span><span class="s2">}"</span>
+</code></pre></div></div>
+
+<h1 id="3-收集-apache-访问日志写入到-redis">3. 收集 Apache 访问日志写入到 Redis</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 修改配置 apache.conf 如下：</span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# <span class="nb">cat </span>apache.conf 
+input <span class="o">{</span>
+  file <span class="o">{</span>
+    path <span class="o">=&gt;</span> <span class="s2">"/var/log/httpd/access_log"</span>
+    start_position <span class="o">=&gt;</span> <span class="s2">"beginning"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  redis <span class="o">{</span>
+    host <span class="o">=&gt;</span> <span class="s2">"192.168.56.12"</span>
+    port <span class="o">=&gt;</span> 6379
+    db <span class="o">=&gt;</span> 6
+    data_type <span class="o">=&gt;</span> <span class="s2">"list"</span>
+    key <span class="o">=&gt;</span> <span class="s2">"apache-access-log"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# /opt/logstash/bin/logstash <span class="nt">-f</span> apache.conf 
+
+<span class="c"># 然后我们浏览器访问 192.168.56.11 产生一些日志</span>
+<span class="c"># 再接着去 192.168.56.12 上 redis 确认 Apache 的访问日志是否写入</span>
+
+192.168.56.12:6379[6]&gt; keys <span class="k">*</span>
+1<span class="o">)</span> <span class="s2">"apache-access-log"</span>
+2<span class="o">)</span> <span class="s2">"demo"</span>
+192.168.56.12:6379[6]&gt; <span class="nb">type </span>apache-access-log
+list
+192.168.56.12:6379[6]&gt; llen apache-access-log 
+<span class="o">(</span>integer<span class="o">)</span> 6
+192.168.56.12:6379[6]&gt; lindex apache-access-log <span class="nt">-1</span>
+<span class="s2">"{</span><span class="se">\"</span><span class="s2">message</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">192.168.56.1 - - [11/Oct/2016:16:35:50 +0800] </span><span class="se">\\\"</span><span class="s2">GET / HTTP/1.1</span><span class="se">\\\"</span><span class="s2"> 304 - </span><span class="se">\\\"</span><span class="s2">-</span><span class="se">\\\"</span><span class="s2"> </span><span class="se">\\\"</span><span class="s2">Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36</span><span class="se">\\\"\"</span><span class="s2">,</span><span class="se">\"</span><span class="s2">@version</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">1</span><span class="se">\"</span><span class="s2">,</span><span class="se">\"</span><span class="s2">@timestamp</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">2016-10-11T08:35:51.169Z</span><span class="se">\"</span><span class="s2">,</span><span class="se">\"</span><span class="s2">path</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">/var/log/httpd/access_log</span><span class="se">\"</span><span class="s2">,</span><span class="se">\"</span><span class="s2">host</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">linux-node1</span><span class="se">\"</span><span class="s2">}"</span>
+</code></pre></div></div>
+
+<p>其实我们要实现收集的 Apache 访问日志的数据处理流向如下图所示：</p>
+
+<p><img src="http://jaminzhang.github.io/images/ELK/ELK-MQ-redis.png" alt="ELK-MQ-redis" /></p>
+
+<p>下面我们继续来完成上面的架构。</p>
+
+<h1 id="4-读取消息队列-redis-中的日志数据并进行-grok-处理">4. 读取消息队列 Redis 中的日志数据并进行 grok 处理</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 在 192.168.56.12 上配置前台启动 logstash 测试</span>
+<span class="c"># 先测试 output 到标准输出</span>
+
+<span class="o">[</span>root@linux-node2 conf.d]# <span class="nb">cat </span>indexer.conf 
+input <span class="o">{</span>
+  redis <span class="o">{</span>
+    host <span class="o">=&gt;</span> <span class="s2">"192.168.56.12"</span>
+    port <span class="o">=&gt;</span> 6379
+    db <span class="o">=&gt;</span> 6
+    data_type <span class="o">=&gt;</span> <span class="s2">"list"</span>
+    key <span class="o">=&gt;</span> <span class="s2">"apache-access-log"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  stdout <span class="o">{</span>
+    codec <span class="o">=&gt;</span> rubydebug
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="o">[</span>root@linux-node2 conf.d]# /opt/logstash/bin/logstash <span class="nt">-f</span> indexer.conf 
+Settings: Default pipeline workers: 1
+Pipeline main started
+<span class="o">{</span>
+       <span class="s2">"message"</span> <span class="o">=&gt;</span> <span class="s2">"192.168.56.1 - - [11/Oct/2016:16:35:48 +0800] </span><span class="se">\"</span><span class="s2">GET / HTTP/1.1</span><span class="se">\"</span><span class="s2"> 304 - </span><span class="se">\"</span><span class="s2">-</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"</span><span class="s2">Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36</span><span class="se">\"</span><span class="s2">"</span>,
+      <span class="s2">"@version"</span> <span class="o">=&gt;</span> <span class="s2">"1"</span>,
+    <span class="s2">"@timestamp"</span> <span class="o">=&gt;</span> <span class="s2">"2016-10-11T08:35:49.126Z"</span>,
+          <span class="s2">"path"</span> <span class="o">=&gt;</span> <span class="s2">"/var/log/httpd/access_log"</span>,
+          <span class="s2">"host"</span> <span class="o">=&gt;</span> <span class="s2">"linux-node1"</span>
+<span class="o">}</span>
+...省略其他输出...
+
+<span class="c"># 从上面可以看到，Logstash 读取到了 redis 中的日志数据并输出到了标准输出</span>
+
+<span class="c"># 下面继续修改 indexer.conf 增加 filter grok 插件来处理 Apache 访问日志</span>
+
+<span class="o">[</span>root@linux-node2 conf.d]# <span class="nb">cat </span>indexer.conf 
+input <span class="o">{</span>
+  redis <span class="o">{</span>
+    host <span class="o">=&gt;</span> <span class="s2">"192.168.56.12"</span>
+    port <span class="o">=&gt;</span> 6379
+    db <span class="o">=&gt;</span> 6
+    data_type <span class="o">=&gt;</span> <span class="s2">"list"</span>
+    key <span class="o">=&gt;</span> <span class="s2">"apache-access-log"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+filter <span class="o">{</span>
+  grok <span class="o">{</span>
+    match <span class="o">=&gt;</span> <span class="o">{</span> <span class="s2">"message"</span> <span class="o">=&gt;</span> <span class="s2">"%{COMBINEDAPACHELOG}"</span> <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  stdout <span class="o">{</span>
+    codec <span class="o">=&gt;</span> rubydebug
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c"># 我们浏览器访问 192.168.56.11 再来产生一些日志</span>
+
+<span class="o">[</span>root@linux-node2 conf.d]# /opt/logstash/bin/logstash <span class="nt">-f</span> indexer.conf 
+Settings: Default pipeline workers: 1
+Pipeline main started
+<span class="o">{</span>
+        <span class="s2">"message"</span> <span class="o">=&gt;</span> <span class="s2">"192.168.56.1 - - [11/Oct/2016:17:07:58 +0800] </span><span class="se">\"</span><span class="s2">GET / HTTP/1.1</span><span class="se">\"</span><span class="s2"> 304 - </span><span class="se">\"</span><span class="s2">-</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"</span><span class="s2">Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36</span><span class="se">\"</span><span class="s2">"</span>,
+       <span class="s2">"@version"</span> <span class="o">=&gt;</span> <span class="s2">"1"</span>,
+     <span class="s2">"@timestamp"</span> <span class="o">=&gt;</span> <span class="s2">"2016-10-11T09:07:58.900Z"</span>,
+           <span class="s2">"path"</span> <span class="o">=&gt;</span> <span class="s2">"/var/log/httpd/access_log"</span>,
+           <span class="s2">"host"</span> <span class="o">=&gt;</span> <span class="s2">"linux-node1"</span>,
+       <span class="s2">"clientip"</span> <span class="o">=&gt;</span> <span class="s2">"192.168.56.1"</span>,
+          <span class="s2">"ident"</span> <span class="o">=&gt;</span> <span class="s2">"-"</span>,
+           <span class="s2">"auth"</span> <span class="o">=&gt;</span> <span class="s2">"-"</span>,
+      <span class="s2">"timestamp"</span> <span class="o">=&gt;</span> <span class="s2">"11/Oct/2016:17:07:58 +0800"</span>,
+           <span class="s2">"verb"</span> <span class="o">=&gt;</span> <span class="s2">"GET"</span>,
+        <span class="s2">"request"</span> <span class="o">=&gt;</span> <span class="s2">"/"</span>,
+    <span class="s2">"httpversion"</span> <span class="o">=&gt;</span> <span class="s2">"1.1"</span>,
+       <span class="s2">"response"</span> <span class="o">=&gt;</span> <span class="s2">"304"</span>,
+       <span class="s2">"referrer"</span> <span class="o">=&gt;</span> <span class="s2">"</span><span class="se">\"</span><span class="s2">-</span><span class="se">\"</span><span class="s2">"</span>,
+          <span class="s2">"agent"</span> <span class="o">=&gt;</span> <span class="s2">"</span><span class="se">\"</span><span class="s2">Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36</span><span class="se">\"</span><span class="s2">"</span>
+<span class="o">}</span>
+...省略其他输出...
+
+<span class="c"># 从上面可以看到，Logstash 读取到了 redis 中的日志数据，进行 grok 过滤处理后再输出到标准输出</span>
+
+</code></pre></div></div>
+
+<h1 id="5-将-grok-过滤处理后的日志数据写入到-es">5. 将 grok 过滤处理后的日志数据写入到 ES</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 下面继续修改 indexer.conf，修改 output 写入到 ES，最终如下：</span>
+
+<span class="o">[</span>root@linux-node2 conf.d]# <span class="nb">cat </span>indexer.conf 
+input <span class="o">{</span>
+  redis <span class="o">{</span>
+    host <span class="o">=&gt;</span> <span class="s2">"192.168.56.12"</span>
+    port <span class="o">=&gt;</span> 6379
+    db <span class="o">=&gt;</span> 6
+    data_type <span class="o">=&gt;</span> <span class="s2">"list"</span>
+    key <span class="o">=&gt;</span> <span class="s2">"apache-access-log"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+filter <span class="o">{</span>
+  grok <span class="o">{</span>
+    match <span class="o">=&gt;</span> <span class="o">{</span> <span class="s2">"message"</span> <span class="o">=&gt;</span> <span class="s2">"%{COMBINEDAPACHELOG}"</span> <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  elasticsearch <span class="o">{</span>
+    hosts <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"192.168.56.11:9200"</span><span class="o">]</span>
+    index <span class="o">=&gt;</span> <span class="s2">"apache-access-log-%{+YYYY.MM.dd}"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="o">[</span>root@linux-node2 conf.d]# /opt/logstash/bin/logstash <span class="nt">-f</span> indexer.conf 
+
+
+<span class="c"># 产生一些 HTTP 200 访问日志</span>
+
+ab <span class="nt">-n</span> 1000 <span class="nt">-c</span> 10 http://192.168.56.11/
+
+<span class="c"># 然后去查看上篇文章已经配置过的 Apache 状态码饼图，确认数据是否更新</span>
+
+</code></pre></div></div>
+
+<blockquote>
+
+  <p>Kibana Dashboard 可以设置自动刷新。</p>
+</blockquote>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.elastic.co/guide/en/logstash/current/deploying-and-scaling.html">Deploying and Scaling Logstash</a></p>
+
+:ET

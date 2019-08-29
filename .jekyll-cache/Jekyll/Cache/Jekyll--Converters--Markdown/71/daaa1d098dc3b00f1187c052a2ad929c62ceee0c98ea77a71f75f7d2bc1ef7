@@ -1,0 +1,140 @@
+I"0<h1 id="引言">引言</h1>
+
+<p>上一篇文章是将 SonarQube 与 Jenkins 结合，实现了从 Git 仓库获取代码并进行代码测试，
+本文将在上一篇的基础上实现将构建测试通过后的代码部署至测试环境。</p>
+
+<h1 id="创建及配置代码部署项目">创建及配置代码部署项目</h1>
+
+<h2 id="1-新建一个项目叫-demo-deploy-用于代码部署">1. 新建一个项目叫 demo-deploy 用于代码部署</h2>
+
+<p>Name: demo-deploy<br />
+描述：代码部署</p>
+
+<h2 id="2-进行构建配置">2. 进行构建配置</h2>
+
+<p>这里我们是通过执行 Shell 部署脚本来实现代码部署。
+所以我们先要配置好 jenkins 用户可以远程到发布机执行部署脚本。<br />
+基于我们之前的文章，发布机是 192.168.56.11，我们需要做 root 用户免密钥登陆到发布机，
+在这之前还需要 jenkins 用户的 sudo ssh 权限。</p>
+
+<h3 id="21-配置-jenkins-用户-sudo-权限">2.1 配置 jenkins 用户 sudo 权限</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+vim  /etc/sudoers
+<span class="c">#Defaults    requiretty # 注释掉，不需要tty</span>
+jenkins <span class="nv">ALL</span><span class="o">=(</span>ALL<span class="o">)</span>       NOPASSWD: /usr/bin/ssh
+
+</code></pre></div></div>
+
+<h3 id="22-配置-jenkins-服务器上-root-用户到发布机的免密钥登陆">2.2 配置 Jenkins 服务器上 root 用户到发布机的免密钥登陆</h3>
+
+<p>配置完成后，我们先命令行上测试是否可以正确拉取 Git 仓库代码。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# ssh www@192.168.56.11 <span class="s1">'./deploy_all.sh deploy'</span>
+Already up-to-date.
+code_build
+HTTP/1.1 200 OK
+add to cluster
+HTTP/1.1 200 OK
+add to cluster
+
+</code></pre></div></div>
+
+<h3 id="23-配置-jenkins-构建调用部署脚本">2.3 配置 Jenkins 构建调用部署脚本</h3>
+
+<p>选择   <code class="highlighter-rouge">Execute shell</code><br />
+<code class="highlighter-rouge">Command: sudo ssh www@192.168.56.11 './deploy_all.sh deploy'</code></p>
+
+<h3 id="24-进行构建测试">2.4 进行构建测试</h3>
+
+<p>点击 <code class="highlighter-rouge">Build Now</code>，然后查看 Output 确认部署结果</p>
+
+<h1 id="关联项目及-pipeline-配置">关联项目及 Pipeline 配置</h1>
+
+<h2 id="1-关联项目">1. 关联项目</h2>
+
+<p>上面我们配置好了 2 个项目，</p>
+
+<ul>
+  <li>demo-sonar 项目用于拉取 Git 仓库代码并进行构建、代码分析。</li>
+  <li>demo-deploy 项目用于部署代码。</li>
+</ul>
+
+<p>现在我们可以关联这 2 个项目，当 demo-sonar 通过时，继续执行 demo-deploy。<br />
+但需要先安装好 <code class="highlighter-rouge">Parameterized Trigger Plugin</code> 插件来实现关联。安装好后，进行如下配置关联：</p>
+
+<p>选择 demo-sonar 项目，定位到<code class="highlighter-rouge">"Post-build Actions"-&gt;"Trigger parameterized build on other projects"</code>，<br />
+配置如下后保存：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+Projects to build:　demo-deploy
+Trigger when build is: Stable
+Trigger build without parammeters : 勾选
+
+</code></pre></div></div>
+
+<p>配置好后，我们可以开始构建 demo-sonar 项目，然后查看是否触发 demo-deploy 项目。</p>
+
+<h2 id="2-配置-pipeline">2. 配置 Pipeline</h2>
+
+<p>关联不同的项目后可形成 Pipeline，需要安装 <code class="highlighter-rouge">Build pipeline plugin</code> 插件实现 Pipeline。</p>
+
+<p>我们现在新建一个 Pipeline，命名为 demo-pipeline，添加时注意选择“Build Pipeline View”。  <br />
+添加完成后，我们就可以运行及查看这个 Pipeline 了。</p>
+
+<h1 id="使用-webhooks-实现自动部署">使用 Webhooks 实现自动部署</h1>
+
+<p>上面我们配置的都需要网页手动点击构建才能触发部署脚本，如何实现当研发 git push 到代码仓库时就触发自动构建、测试及部署呢？   <br />
+(这里是部署到测试环境，实际生产部署还是需要运维手动控制部署) <br />
+这里我们可以使用 GitLab Webhooks 来实现。</p>
+
+<h2 id="1-jekins-配置">1 Jekins 配置</h2>
+
+<h3 id="11-安装相关插件">1.1 安装相关插件</h3>
+
+<ul>
+  <li>Build Authorization Token Root Plugin</li>
+  <li>GitLab Hook Plugin</li>
+</ul>
+
+<h3 id="12-生成一个-token">1.2 生成一个 Token</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+openssl rand <span class="nt">-hex</span> 12
+80df1bb5d0e4e25cd9248a6b
+
+</code></pre></div></div>
+
+<h3 id="13-配置构建触发器">1.3 配置构建触发器</h3>
+
+<p>选择 demo-sonar 项目，定位到 “Build Triggers”，然后如下配置后保存：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+勾选 “Trigger builds remotely <span class="o">(</span>e.g., from scripts<span class="o">)</span>”
+Authentication Token: 填写刚才生成的 Token 80df1bb5d0e4e25cd9248a6b
+勾选 “Build when a change is pushed to GitLab.”
+
+</code></pre></div></div>
+
+<h2 id="2-gitlab-配置">2 GitLab 配置</h2>
+
+<h3 id="21-配置-git-项目-webhook-url-和-trigger">2.1 配置 Git 项目 Webhook URL 和 Trigger</h3>
+
+<p>定位到对应 Git 项目的 Webhooks 配置页面，然后做如下配置：</p>
+
+<p>URL:http://192.168.56.11:8080/buildByToken/build?job=demo-sonar&amp;token=80df1bb5d0e4e25cd9248a6b<br />
+Trigger: 根据需要选择，这里我们使用默认的 Push events</p>
+
+<p>添加好后，进行 Webhooks 测试，点击网页最下方测试按钮。</p>
+
+<h2 id="3-正式测试">3 正式测试</h2>
+
+<p>现在我们向 GitLab 上的项目进行 git push，然后检查是否成功触发自动构建、测试及部署。</p>
+
+<p>访问 Web 界面验证代码是否为最新。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://wiki.jenkins-ci.org/display/JENKINS/Build+Token+Root+Plugin">Build Token Root Plugin</a></p>
+
+:ET

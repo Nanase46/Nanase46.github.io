@@ -1,0 +1,66 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>之前一篇博文曾经写过 Zabbix 自定义监控项目配置，当时以 nginx status 监控举例说明的。<br />
+现在重新用一个综合性自定义监控脚本来监控 TCP、nginx status、memcached、redis 等的状态。</p>
+
+<h1 id="1-配置-nginx-开启-nginx-status">1. 配置 Nginx 开启 nginx status</h1>
+
+<p>Nginx 配置文件中增加如下配置：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+location /nginx_status <span class="o">{</span>
+	stub_status on<span class="p">;</span>
+	access_log   off<span class="p">;</span>
+	allow 127.0.0.1<span class="p">;</span>
+	allow 192.168.56.0/24<span class="p">;</span>
+	deny all<span class="p">;</span>
+<span class="o">}</span>	
+
+</code></pre></div></div>
+
+<p>注意 nginx status 的 URL 要和脚本中的 /nginx_status 匹配</p>
+
+<h1 id="2-配置-tcpnginx-statusmemcachedredis-等等监控脚本">2. 配置 TCP、nginx status、memcached、redis 等等监控脚本</h1>
+
+<p>本文只演示配置 TCP、nginx status 状态</p>
+
+<p><a href="https://raw.githubusercontent.com/JaminZhang/jaminzhang.github.io/master/soft-conf/Zabbix/zabbix_linux_plugin.sh">zabbix_linux_plugin 脚本地址</a></p>
+
+<p>测试脚本能正常获取数据。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 zabbix_agentd.d]# /etc/zabbix/scripts/zabbix_linux_plugin.sh nginx_status 8080 active
+1
+<span class="o">[</span>root@linux-node1 zabbix_agentd.d]# /etc/zabbix/scripts/zabbix_linux_plugin.sh tcp_status ESTAB
+4
+
+</code></pre></div></div>
+
+<h1 id="3-增加-zabbix-自定义监控项目的配置文件">3. 增加 Zabbix 自定义监控项目的配置文件</h1>
+
+<p>配置文件一般放在<code class="highlighter-rouge">/etc/zabbix/zabbix_agentd.d/</code>下，<br />
+内容如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 zabbix_agentd.d]# <span class="nb">cat </span>userparameter_linux.conf 
+<span class="nv">UserParameter</span><span class="o">=</span>linux_status[<span class="k">*</span><span class="o">]</span>,/etc/zabbix/scripts/zabbix_linux_plugin.sh <span class="nv">$1</span> <span class="nv">$2</span> <span class="nv">$3</span> 
+
+</code></pre></div></div>
+
+<p>添加配置文件后，重启 Zabbix Agent，然后使用 zabbix_get 测试是否能获取数据，比如：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 zabbix_agentd.d]# zabbix_get <span class="nt">-s</span> 192.168.56.11 <span class="nt">-p</span> 10050 <span class="nt">-k</span> <span class="s2">"linux_status[nginx_status,8080,active]"</span>
+1
+<span class="o">[</span>root@linux-node1 zabbix_agentd.d]# zabbix_get <span class="nt">-s</span> 192.168.56.11 <span class="nt">-p</span> 10050 <span class="nt">-k</span> <span class="s2">"linux_status[tcp_status,ESTAB]"</span>
+6
+
+</code></pre></div></div>
+
+<h2 id="4-在-zabbix-web-界面上添加自定义监控的-itemgraph-等等">4. 在 Zabbix Web 界面上添加自定义监控的 item/graph 等等</h2>
+
+<p>这步手动比较繁琐，第一次添加时，我们可以做成模板，以后之后再添加时，直接导入相应模板。<br />
+这里我们使用导入模板的方式。参考模板如下：<br />
+<a href="https://github.com/JaminZhang/jaminzhang.github.io/blob/master/soft-conf/Zabbix/zbx_nginx_template.xml">zbx_nginx_template.xml</a><br />
+<a href="https://github.com/JaminZhang/jaminzhang.github.io/blob/master/soft-conf/Zabbix/zbx_tcp_template.xml">zbx_tcp_template.xml</a></p>
+:ET

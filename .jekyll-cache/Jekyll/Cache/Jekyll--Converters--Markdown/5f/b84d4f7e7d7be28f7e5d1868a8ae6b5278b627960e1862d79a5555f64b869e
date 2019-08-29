@@ -1,0 +1,25 @@
+I"<p>了解 JVM 性能调优</p>
+
+<h1 id="引言">引言</h1>
+
+<p>对于 Java 应用的业务没怎么接触过，于是就查找资料学习初步了解下，主要是 JVM 的性能调优。
+Ref 中是看的相关资料。</p>
+
+<h1 id="jvm-主要调优参数">JVM 主要调优参数</h1>
+
+<ol>
+  <li>设定堆内存大小</li>
+  <li>设定新生代大小</li>
+  <li>设定垃圾回收器</li>
+</ol>
+
+<p>具体调优策略需要仔细学习理解下 Ref 中相关资料。</p>
+
+<h1 id="ref">Ref</h1>
+
+<p><a href="http://www.cnblogs.com/zhguang/p/3257367.html">Java 系列笔记(3) - Java 内存区域和 GC 机制</a><br />
+<a href="http://www.cnblogs.com/zhguang/p/Java-JVM-GC.html">Java 系列笔记(4) - JVM 监控与调优</a><br />
+<a href="http://www.jianshu.com/p/c6a04c88900a">JVM 性能调优入门</a><br />
+<a href="http://blog.csdn.net/chen77716/article/details/5695893">JVM 性能调优</a><br />
+<a href="http://blog.csdn.net/zlts000/article/details/53046620">【JVM 调优】—-内存溢出和内存泄漏</a></p>
+:ET

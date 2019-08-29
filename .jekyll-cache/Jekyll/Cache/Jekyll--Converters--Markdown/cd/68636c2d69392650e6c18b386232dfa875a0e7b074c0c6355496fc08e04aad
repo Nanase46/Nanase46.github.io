@@ -1,0 +1,48 @@
+I"�<h1 id="kibana-基本配置使用">Kibana 基本配置使用</h1>
+
+<h2 id="安装">安装</h2>
+
+<p>前面 ELK 快速安装文章中已经说明。</p>
+
+<h2 id="配置">配置</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># kibana 配置文件如下配置</span>
+
+<span class="o">[</span>root@linux-node2 ~]# <span class="nb">grep</span> <span class="s2">"^[a-Z]"</span> /opt/kibana/config/kibana.yml
+server.port: 5601
+server.host: <span class="s2">"0.0.0.0"</span>
+elasticsearch.url: <span class="s2">"http://192.168.58.12:9200"</span>
+
+</code></pre></div></div>
+
+<h2 id="启动-kibana">启动 Kibana</h2>
+
+<blockquote>
+
+  <p>systemctl start kibana</p>
+</blockquote>
+
+<h2 id="访问-web-页面">访问 Web 页面</h2>
+
+<p>地址：http://Kibana 服务器地址:5601/</p>
+
+<p>第一次访问，提示没有默认索引模式，我们稍后进行配置。</p>
+
+<h2 id="添加索引并搜索使用">添加索引并搜索使用</h2>
+
+<p>前几篇文章我们演示了收集系统日志、Java 日志、Nginx 访问日志，如下图：
+<img src="http://jaminzhang.github.io/images/ELK/ES-Index.png" alt="ES-Index" /></p>
+
+<p>现在我们在 Kibana 上添加如上索引，按照下图示例添加：
+<img src="http://jaminzhang.github.io/images/ELK/Kibana-Configure-index-pattern.png" alt="Kibana-Configure-index-pattern" /></p>
+
+<p>添加完成后如下图，我们就可以搜索日志了，之后可以保存搜索、配置统计图和 Dashboard，这里就不详述了。
+<img src="http://jaminzhang.github.io/images/ELK/Kibana-index.png" alt="Kibana-index" /></p>
+
+<p>上面我们访问使用 Kibana 时，并没有进行登录验证，为了安全考虑，我们需要进行 Kibana 的登录验证配置。<br />
+这个我们之后再写一篇文章。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://kibana.logstash.es/content/kibana/v4/production.html">Kibana production</a></p>
+:ET

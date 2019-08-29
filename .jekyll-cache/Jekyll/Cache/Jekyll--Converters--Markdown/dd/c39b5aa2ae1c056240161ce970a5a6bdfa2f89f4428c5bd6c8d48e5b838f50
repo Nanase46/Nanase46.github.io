@@ -1,0 +1,354 @@
+I"V7<h1 id="1-通过-yum-安装依赖的库以及环境">1 通过 yum 安装依赖的库以及环境</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>yum <span class="nb">install </span>rrdtool wqy<span class="k">*</span> fping curl bind-utils httpd httpd-devel <span class="se">\</span>
+perl perl-FCGI perl-CGI perl-CGI-SpeedyCGI perl-libwww-perl perl-Socket6 perl-Net-Telnet perl-Net-OpenSSH perl-Net-DNS perl-LDAP perl-IO-Socket-SSL perl-ExtUtils-MakeMaker rrdtool-perl perl-Sys-Syslog
+</code></pre></div></div>
+
+<p>以下软件包现在的 EPEL 源中没有</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>No package echoping available.
+No package perl-CGI-Fast available.
+No package perl-Config-Grammar available.
+No package perl-Authen-Radius available.
+</code></pre></div></div>
+
+<h1 id="2-编译安装-smokeping">2 编译安装 smokeping</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> /usr/local/src/ 
+wget http://oss.oetiker.ch/smokeping/pub/smokeping-2.6.11.tar.gz
+<span class="nb">tar </span>xvf smokeping-2.6.11.tar.gz 
+<span class="nb">cd </span>smokeping-2.6.11
+./setup/build-perl-modules.sh /usr/local/smokeping/thirdparty
+./configure <span class="nt">--prefix</span><span class="o">=</span>/usr/local/smokeping
+gmake <span class="nb">install</span>
+</code></pre></div></div>
+
+<h1 id="3-配置-smokeping-相关文件目录">3 配置 smokeping 相关文件目录</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> /usr/local/smokeping/
+<span class="nb">mkdir </span>cache data var
+<span class="nb">touch</span> /var/log/smokeping.log
+<span class="nb">chown </span>apache.apache cache/ data/ var/ /var/log/smokeping.log
+<span class="nb">cd</span> /usr/local/smokeping/htdocs/
+<span class="nb">cp </span>smokeping.fcgi.dist smokeping.fcgi
+<span class="nb">cp</span> /usr/local/smokeping/etc/config.dist /usr/local/smokeping/etc/config
+vim /usr/local/smokeping/etc/config
+
+<span class="c"># 修改 /usr/local/smokeping/etc/config 文件</span>
+
+<span class="c"># 修改 cgiurl</span>
+<span class="nb">sed</span> <span class="nt">-i</span> <span class="s1">'s#some.url#192.168.56.11#'</span> /usr/local/smokeping/etc/config
+
+<span class="c"># 默认检测时间 300 秒修改 60 秒</span>
+<span class="nb">sed</span> <span class="nt">-i</span> <span class="s1">'s#300#60#g'</span> /usr/local/smokeping/etc/config        
+
+<span class="c"># 默认 60 秒 ping 20 次，修改为 60 秒 ping 60 次</span>
+<span class="nb">sed</span> <span class="nt">-i</span> <span class="s1">'s#pings    = 20#pings    = 60#'</span> /usr/local/smokeping/etc/config
+
+<span class="c"># 在 presentation 后添加 utf-8 中文字符集</span>
+vim /usr/local/smokeping/etc/config               
+
+<span class="k">***</span> Presentation <span class="k">***</span>
+
+charset <span class="o">=</span> utf-8
+
+<span class="c"># 修改密码文件权限</span>
+<span class="nb">chmod </span>600 /usr/local/smokeping/etc/smokeping_secrets.dist
+</code></pre></div></div>
+
+<h1 id="4-配置-apache">4 配置 apache</h1>
+
+<h2 id="41-设置登录密码认证">4.1 设置登录密码认证</h2>
+<p>htpasswd -c /usr/local/smokeping/htdocs/htpasswd jamin</p>
+
+<h2 id="42-修改-apache-配置文件配置-smokeping-站点目录">4.2 修改 apache 配置文件，配置 smokeping 站点目录</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vim /etc/httpd/conf/httpd.conf
+DocumentRoot <span class="s2">"/var/www/html"</span> 下添加如下内容
+
+Alias /cache <span class="s2">"/usr/local/smokeping/cache/"</span>
+Alias /cropper <span class="s2">"/usr/local/smokeping/htdocs/cropper/"</span>
+Alias /smokeping <span class="s2">"/usr/local/smokeping/htdocs/smokeping.fcgi"</span>
+
+&lt;Directory <span class="s2">"/usr/local/smokeping"</span><span class="o">&gt;</span>
+    AllowOverride None
+    Options All
+    AddHandler cgi-script .fcgi .cgi
+    Order allow,deny
+    Allow from all
+    AuthName <span class="s2">"Smokeping"</span>
+    AuthType Basic
+    AuthUserFile /usr/local/smokeping/htdocs/htpasswd
+    Require valid-user
+    DirectoryIndex smokeping.fcgi
+&lt;/Directory&gt;
+</code></pre></div></div>
+
+<h1 id="5-设置-smokeping-启动脚本">5 设置 smokeping 启动脚本</h1>
+
+<p>CentOS 7 暂定</p>
+
+<h1 id="6-启动服务以及访问-smokeping">6 启动服务以及访问 smokeping</h1>
+
+<blockquote>
+
+  <p>systemctl start httpd<br />
+/usr/local/smokeping/bin/smokeping</p>
+</blockquote>
+
+<p>访问 URL:<br />
+http://192.168.56.11/smokeping</p>
+
+<h1 id="7-smokeping-使用">7 smokeping 使用</h1>
+
+<h2 id="71-添加需要监控的节点">7.1 添加需要监控的节点</h2>
+
+<p>注意事项：</p>
+
+<p>1 在 /usr/local/smokeping/etc/config 中添加<br />
+2 smokeping 就这点不好，添加节点不能在前台 Web 页面添加，一定要在后台的配置文件中添加<br />
+3 修改 /usr/local/smokeping/etc/config 后，必须重启 smokeping 程序，配置才会生效  <br />
+4 smokeping 会根据配置文件 config 在 /usr/local/smokeping/data 之下添加文件夹及子文件夹<br />
+5 用 VMware Workstation 的虚拟机测试有一点好处，虚拟网卡可以设置出入的丢包率，适合 smokeping 做丢包测试，经过测试 smokeping 检测出的丢包率与 VMware Workstation 虚拟网卡设置的丢包率基本相同，也就是说 smokeping 能够反应网络的真实状况</p>
+
+<p>添加监控节点示例：注意 + 是第一层，++ 是第二层，+++ 是第三层</p>
+
+<p>以下附上一份三大运营商网络监控样例配置（在 /usr/local/smokeping/etc/config 最后添加）：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+ Other
+menu <span class="o">=</span> 三大网络监控
+title <span class="o">=</span> 监控统计
+
+++ CT
+
+menu <span class="o">=</span> 电信网络监控
+title <span class="o">=</span> 电信网络监控列表
+host <span class="o">=</span> /Other/CT/CT-BJ /Other/CT/CT-TJ /Other/CT/CT-HLJ /Other/CT/CT-SH /Other/CT/CT-SC /Other/CT/CT-GZ
+
++++ CT-BJ
+
+menu <span class="o">=</span> 北京电信
+title <span class="o">=</span> 北京电信
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 202.96.199.133
+
++++ CT-TJ
+
+menu <span class="o">=</span> 天津电信
+title <span class="o">=</span> 天津电信
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 219.150.32.132
+
++++ CT-HLJ
+
+menu <span class="o">=</span> 黑龙江电信
+title <span class="o">=</span> 黑龙江电信
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 219.147.198.242
+
++++ CT-SH
+
+menu <span class="o">=</span> 上海电信
+title <span class="o">=</span> 上海电信
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 116.228.111.118
+
++++ CT-SC
+
+menu <span class="o">=</span> 四川电信
+title <span class="o">=</span> 四川电信
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 61.139.2.69
+
++++ CT-GZ
+
+menu <span class="o">=</span> 广东电信
+title <span class="o">=</span> 广东电信
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 113.111.211.22
+ 
+
+++ CU
+
+menu <span class="o">=</span> 联通网络监控
+title <span class="o">=</span> 联通网络监控列表
+host <span class="o">=</span> /Other/CU/CU-BJ /Other/CU/CU-TJ /Other/CU/CU-HLJ /Other/CU/CU-SH /Other/CU/CU-SC /Other/CU/CU-GZ
+
++++ CU-BJ
+
+menu <span class="o">=</span> 北京联通
+title <span class="o">=</span> 北京联通
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 61.135.169.121
+
++++ CU-TJ
+
+menu <span class="o">=</span> 天津联通
+title <span class="o">=</span> 天津联通
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 202.99.96.68
+
++++ CU-HLJ
+
+menu <span class="o">=</span> 黑龙江联通
+title <span class="o">=</span> 黑龙江联通
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 202.97.224.69
+
++++ CU-SH
+
+menu <span class="o">=</span> 上海联通
+title <span class="o">=</span> 上海联通
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 210.22.84.3
+
+
++++ CU-SC
+
+menu <span class="o">=</span> 四川联通
+title <span class="o">=</span> 四川联通
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 119.6.6.6
+
++++ CU-GZ
+
+menu <span class="o">=</span> 广东联通
+title <span class="o">=</span> 广东联通
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 221.5.88.88
+
+ 
+
+++ CMCC
+
+menu <span class="o">=</span> 移动网络监控
+title <span class="o">=</span> 移动网络监控列表
+host <span class="o">=</span> /Other/CMCC/CMCC-BJ /Other/CMCC/CMCC-TJ /Other/CMCC/CMCC-HLJ /Other/CMCC/CMCC-SH /Other/CMCC/CMCC-SC /Other/CMCC/CMCC-GZ
+
++++ CMCC-BJ
+
+menu <span class="o">=</span> 北京移动
+title <span class="o">=</span> 北京移动
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 221.130.33.52
+
++++ CMCC-TJ
+
+menu <span class="o">=</span> 天津移动
+title <span class="o">=</span> 天津移动
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 211.137.160.5 
+
++++ CMCC-HLJ
+
+menu <span class="o">=</span> 黑龙江移动
+title <span class="o">=</span> 黑龙江移动
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 211.137.241.35
+ 
++++ CMCC-SH
+
+menu <span class="o">=</span> 上海移动
+title <span class="o">=</span> 上海移动
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 117.131.19.23
+
++++ CMCC-SC
+
+menu <span class="o">=</span> 四川移动
+title <span class="o">=</span> 四川移动
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 218.201.4.3
+
++++ CMCC-GZ
+
+menu <span class="o">=</span> 广东移动
+title <span class="o">=</span> 广东移动
+alerts <span class="o">=</span> someloss
+host <span class="o">=</span> 211.136.192.6
+</code></pre></div></div>
+
+<p>出图效果截图如下：<br />
+<img src="https://raw.githubusercontent.com/JaminZhang/jaminzhang.github.io/master/images/SmokePing-01.png" alt="SmokePing" /></p>
+
+<h1 id="报错">报错</h1>
+
+<h2 id="报错-1">报错 1</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@linux-node1 smokeping-2.6.11]# ./setup/build-perl-modules.sh /usr/local/smokeping/thirdparty
+Building <span class="k">in</span> /usr/local/smokeping/thirdparty
+<span class="nt">--</span><span class="o">&gt;</span> Working on FCGI
+Fetching http://www.cpan.org/authors/id/E/ET/ETHER/FCGI-0.78.tar.gz ... OK
+<span class="o">==&gt;</span> Found dependencies: ExtUtils::MakeMaker
+<span class="nt">--</span><span class="o">&gt;</span> Working on ExtUtils::MakeMaker
+Fetching http://www.cpan.org/authors/id/B/BI/BINGOS/ExtUtils-MakeMaker-7.18.tar.gz ... OK
+Configuring ExtUtils-MakeMaker-7.18 ... OK
+Can<span class="s1">'t locate ExtUtils/Manifest.pm in @INC (@INC contains: FatPacked::35736456=HASH(0x2214b88) /usr/local/smokeping/thirdparty/lib/perl5 /usr/local/lib64/perl5 /usr/local/share/perl5 /usr/lib64/perl5/vendor_perl /usr/share/perl5/vendor_perl /usr/lib64/perl5 /usr/share/perl5 .) at /usr/local/smokeping/thirdparty/bin/cpanm line 132.
+</span></code></pre></div></div>
+
+<p>解决方法：</p>
+
+<blockquote>
+
+  <p>yum install perl-ExtUtils-MakeMaker</p>
+</blockquote>
+
+<h2 id="报错-2">报错 2</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>checking checking <span class="k">for </span>perl module <span class="s1">'RRDs'</span>... Can<span class="s1">'t locate RRDs.pm in @INC (@INC contains: /usr/local/smokeping/thirdparty/lib/perl5/x86_64-linux-thread-multi /usr/local/smokeping/thirdparty/lib/perl5 /usr/local/lib64/perl5 /usr/local/share/perl5 /usr/lib64/perl5/vendor_perl /usr/share/perl5/vendor_perl /usr/lib64/perl5 /usr/share/perl5 .) at -e line 1.
+BEGIN failed--compilation aborted at -e line 1.
+Failed
+</span></code></pre></div></div>
+
+<p>解决方法：</p>
+
+<blockquote>
+
+  <p>yum search all perl | grep “rrd”<br />
+yum install rrdtool-perl</p>
+</blockquote>
+
+<h2 id="报错-3">报错 3</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Can<span class="s1">'t locate Sys/Syslog.pm in @INC (@INC contains: /usr/local/smokeping/thirdparty/lib/perl5/x86_64-linux-thread-multi /usr/local/smokeping/thirdparty/lib/perl5 ../lib /usr/local/lib64/perl5 /usr/local/share/perl5 /usr/lib64/perl5/vendor_perl /usr/share/perl5/vendor_perl /usr/lib64/perl5 /usr/share/perl5 .) at ../lib/Smokeping.pm line 16.
+BEGIN failed--compilation aborted at ../lib/Smokeping.pm line 16.
+Compilation failed in require.
+BEGIN failed--compilation aborted.
+gmake[1]: *** [Smokeping_probes_EchoPingSmtp.pod] Error 2
+rm Smokeping_probes_EchoPingSmtp.pod
+gmake[1]: Leaving directory `/usr/local/src/smokeping-2.6.11/doc'</span>
+gmake: <span class="k">***</span> <span class="o">[</span>install-recursive] Error 1
+</code></pre></div></div>
+
+<p>解决方法：</p>
+
+<blockquote>
+
+  <p>[root@linux-node1 ~]# yum search all perl | grep -i “syslog”<br />
+perl-Unix-Syslog.x86_64 : Perl interface to the UNIX syslog(3) calls<br />
+perl-Sys-Syslog.x86_64 : Perl interface to the UNIX syslog(3) calls<br />
+yum install perl-Sys-Syslog</p>
+</blockquote>
+
+<h2 id="报错-4">报错 4</h2>
+
+<p>ERROR: /usr/local/smokeping/bin/../etc/config, line 153: unknown section ‘China Telecom’</p>
+
+<p>解决方法：</p>
+
+<blockquote>
+
+  <p>根据 host /Other/CT/CT-BJ，<br />
+++ China Telecom 应该修改成 ++ CT</p>
+</blockquote>
+
+<h2 id="报错-5">报错 5</h2>
+<p>不显示中文<br />
+安装中文字体<br />
+yum install wqy*</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://oss.oetiker.ch/smokeping/doc/smokeping_install.en.html">smokeping_install</a><br />
+<a href="http://www.xuliangwei.com/xubusi/507.html">smokeping安装部署最佳实践</a></p>
+
+:ET

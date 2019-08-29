@@ -1,0 +1,54 @@
+I"<h1 id="实例-1">实例 1</h1>
+
+<p>统计某目录下的所有文件个数（包含子目录）。</p>
+
+<p>首先应该想到的方法便是使用 find 命令，如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@xxx_admin res]# find ./ <span class="nt">-type</span> f | <span class="nb">wc</span> <span class="nt">-l</span>
+55490
+
+</code></pre></div></div>
+
+<p>然后还看到这样不那么直接, 使用 grep 命令来查找并统计，如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@xxx_admin res]# <span class="nb">ls</span> <span class="nt">-lR</span> | <span class="nb">grep</span> <span class="s2">"^-"</span> | <span class="nb">wc</span> <span class="nt">-l</span>
+55489
+
+</code></pre></div></div>
+
+<p>上面统计的数目为什么相差 1，现在还没想明白。</p>
+
+<h1 id="实例-2">实例 2</h1>
+
+<p><code class="highlighter-rouge">man find</code> 中的例子</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+find <span class="nb">.</span> <span class="nt">-type</span> f <span class="nt">-exec</span> file <span class="s1">'{}'</span> <span class="se">\;</span>
+
+Runs ‘file’ on every file <span class="k">in </span>or below the current directory. 
+Notice that the braces are enclosed <span class="k">in </span>single quote marks to 
+protect them from interpretation as shell script punctuation.  
+The semicolon is similarly protected by the use of a backslash, 
+though single quotes could have been used <span class="k">in </span>that <span class="k">case</span> also.
+
+</code></pre></div></div>
+
+<h1 id="实例-3">实例 3</h1>
+
+<p>称动当前目录的 test.log 文件 到 /tmp 目录下</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@VM_15_187_centos ~]# find ./ <span class="nt">-type</span> f <span class="nt">-iname</span> <span class="s2">"test.log"</span> <span class="nt">-exec</span> <span class="nb">ls</span> <span class="nt">-l</span>  <span class="o">{}</span> <span class="se">\;</span>
+<span class="nt">-rw-r--r--</span> 1 root root 27 Mar 21 15:23 ./test.log
+<span class="o">[</span>root@VM_15_187_centos ~]# find ./ <span class="nt">-type</span> f <span class="nt">-iname</span> <span class="s2">"test.log"</span> <span class="nt">-exec</span> <span class="nb">mv</span> <span class="o">{}</span> /tmp/ <span class="se">\;</span> <span class="c"># 注意 -exec 写法，经常以为是两个"-"</span>
+<span class="o">[</span>root@VM_15_187_centos ~]# ll /root/test.log /tmp/test.log 
+<span class="nb">ls</span>: cannot access /root/test.log: No such file or directory
+<span class="nt">-rw-r--r--</span> 1 root root 27 Mar 21 15:23 /tmp/test.log
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://blog.sina.com.cn/s/blog_464f6dba01012vwv.html">Linux 统计某文件夹下文件、文件夹的个数</a></p>
+:ET

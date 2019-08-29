@@ -1,0 +1,142 @@
+I"�<p>2017-06-04-Python-Fundamental-05-Function.md</p>
+
+<h1 id="函数">函数</h1>
+
+<ul>
+  <li>给一段语句起个名字，以方便日后反复调用。</li>
+</ul>
+
+<p>生活举例：
+计算机就像你的仆人，代码就是你对仆人的命令。<br />
+函数是多个命令组合在一起的复杂命令。</p>
+
+<h2 id="一个例子">一个例子</h2>
+
+<p>对仆人：</p>
+
+<p>擦桌子  -\<br />
+擦地    -打扫房间<br />
+倒垃圾  -/</p>
+
+<p>对计算机：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">def</span> <span class="nf">clean_room</span><span class="p">():</span>
+    <span class="n">clean_table</span><span class="p">()</span>
+    <span class="n">clean_floor</span><span class="p">()</span>
+    <span class="n">clean_trash</span><span class="p">()</span>
+
+</code></pre></div></div>
+
+<h1 id="形式参数">形式参数</h1>
+
+<ul>
+  <li>给函数传入一些参数。</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">def</span> <span class="nf">clean_room</span><span class="p">(</span><span class="n">room_name</span><span class="p">):</span>
+    <span class="n">clean_table</span><span class="p">(</span><span class="n">room_name</span><span class="p">)</span>
+    <span class="n">clean_floor</span><span class="p">(</span><span class="n">room_name</span><span class="p">)</span>
+    <span class="n">clean_trash</span><span class="p">(</span><span class="n">room_name</span><span class="p">)</span>
+
+<span class="n">clean_room</span><span class="p">(</span><span class="s">"主卧"</span><span class="p">)</span>
+	
+</code></pre></div></div>
+
+<h1 id="位置参数">位置参数</h1>
+
+<ul>
+  <li>有多个形式参数，依据位置来赋值给参数。</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">def</span> <span class="nf">clean_room</span><span class="p">(</span><span class="n">room_name</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+    <span class="c1"># clean code
+</span>	
+<span class="n">clean_room</span><span class="p">(</span><span class="s">"主卧"</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+</code></pre></div></div>
+
+<h1 id="关键字参数">关键字参数</h1>
+
+<ul>
+  <li>明确给一个参数赋值。</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">def</span> <span class="nf">clean_room</span><span class="p">(</span><span class="n">room_name</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+    <span class="c1"># clean code
+</span>	
+<span class="n">clean_room</span><span class="p">(</span><span class="n">level</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">room_name</span> <span class="o">=</span> <span class="s">"主卧"</span><span class="p">)</span>
+
+</code></pre></div></div>
+
+<h1 id="默认参数">默认参数</h1>
+
+<ul>
+  <li>对一个参数设置默认值。</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">def</span> <span class="nf">clean_room</span><span class="p">(</span><span class="n">room_name</span><span class="p">,</span> <span class="n">level</span> <span class="o">=</span> <span class="mi">2</span><span class="p">):</span>
+    <span class="c1"># clean code
+</span>	
+<span class="n">clean_room</span><span class="p">(</span><span class="n">room_name</span> <span class="o">=</span> <span class="s">"主卧"</span><span class="p">)</span>
+
+</code></pre></div></div>
+
+<h1 id="返回值">返回值</h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">def</span> <span class="nf">clean_room</span><span class="p">(</span><span class="n">room_name</span><span class="p">,</span> <span class="n">level</span> <span class="o">=</span> <span class="mi">2</span><span class="p">):</span>
+    <span class="c1"># clean code
+</span>    <span class="n">finished</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">return</span> <span class="n">finished</span>
+	
+<span class="n">success</span> <span class="o">=</span> <span class="n">clean_room</span><span class="p">(</span><span class="n">room_name</span> <span class="o">=</span> <span class="s">"主卧"</span><span class="p">)</span>
+
+</code></pre></div></div>
+
+<ul>
+  <li>return 语句结束，函数也结束</li>
+  <li>如果没有 return 语句，默认返回 None</li>
+</ul>
+
+<h2 id="多返回值">多返回值</h2>
+
+<ul>
+  <li>用逗号分分隔多个返回值</li>
+  <li>接收时也要用多个变量来接收返回值</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">def</span> <span class="nf">clean_room</span><span class="p">(</span><span class="n">room_name</span><span class="p">,</span> <span class="n">level</span> <span class="o">=</span> <span class="mi">2</span><span class="p">):</span>
+    <span class="c1"># clean code
+</span>    <span class="n">finished</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">error_msg</span> <span class="o">=</span> <span class="s">"清洁剂没有了"</span>  <span class="c1"># error_msg, finished 是局部变量，只能函数内部使用
+</span>    <span class="k">return</span> <span class="n">finished</span><span class="p">,</span> <span class="n">error_msg</span>
+	
+<span class="n">success</span><span class="p">,</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">clean_room</span><span class="p">(</span><span class="n">room_name</span> <span class="o">=</span> <span class="s">"主卧"</span><span class="p">)</span>
+
+</code></pre></div></div>
+
+<h1 id="文档字符串">文档字符串</h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">def</span> <span class="nf">clean_room</span><span class="p">(</span><span class="n">room_name</span><span class="p">,</span> <span class="n">level</span> <span class="o">=</span> <span class="mi">2</span><span class="p">):</span>
+    <span class="s">'''这个函数用来清理房间
+    '''</span>
+    <span class="c1"># clean code  一般注释
+</span>    <span class="n">finished</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">error_msg</span> <span class="o">=</span> <span class="s">"清洁剂没有了"</span>
+    <span class="k">return</span> <span class="n">finished</span><span class="p">,</span> <span class="n">error_msg</span>
+
+</code></pre></div></div>
+
+<h1 id="可变个参数">可变个参数</h1>
+
+<p>Python 部落搜索 args</p>
+
+<p><a href="https://python.freelycode.com/contribution/detail/427">*args 和 **kwargs 在 Python 中的作用</a></p>
+:ET

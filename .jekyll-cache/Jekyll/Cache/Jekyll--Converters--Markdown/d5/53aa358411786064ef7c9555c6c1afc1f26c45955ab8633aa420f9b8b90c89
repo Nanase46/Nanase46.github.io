@@ -1,0 +1,49 @@
+I"<h1 id="引言">引言</h1>
+<p>要模拟一个实时变化的日志文件，就是一直不停地往一个文件中追加记录，我首先想的用 Shell 脚本中的 while loop 来做。</p>
+
+<h1 id="模拟实时变化的日志文件">模拟实时变化的日志文件</h1>
+
+<p>现在使用 Shell 中的 while loop 来写个生成实时变化的日志文件的脚本，首先复习下 while loop 的结构，如下：</p>
+
+<pre>
+
+while [ condition ]
+do 
+ command(s)... 
+done
+
+</pre>
+
+<p>测试脚本如下：</p>
+
+<pre>
+
+while true
+do
+	date &gt;&gt; /tmp/test.log
+done
+
+</pre>
+
+<p>然后运行 2 分钟后发现，CPU 占用率达到 100%，机器 hang 住了，原因可以看<a href="http://www.lfyzjck.com/why-infinite-loop-increase-cpu-use/">这里的一个解释</a>。</p>
+
+<p>避免 CPU 占用率 100% 可以增加一个 usleep (微秒)。</p>
+
+<p>测试脚本如下：</p>
+
+<pre>
+
+while true
+do
+	date &gt;&gt; /tmp/test.log
+	usleep 1000
+done
+
+</pre>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://www.lfyzjck.com/why-infinite-loop-increase-cpu-use/">为什么一个空的死循环会让CPU占用达到100%</a><br />
+<a href="http://bbs.csdn.net/topics/390212551">cpu使用率跟什么因素有关</a><br />
+<a href="http://www.tldp.org/LDP/abs/html/loops1.html">Loops</a></p>
+
+:ET

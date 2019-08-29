@@ -1,0 +1,41 @@
+I"�<h1 id="jenkins-前身">Jenkins 前身</h1>
+
+<p>Jenkins 前身是 Hudson。更名原因：</p>
+
+<pre>
+
+Hudson 团队发表正式声明：整个团队将要摆脱 Oracle 服务器并将项目正式更名为 Jenkins。  
+看起来没什么问题，但实际上这是被逼无奈的结果，  
+因为项目维护者不希望由于做了某些 Oracle 不喜欢的事情而导致 Oracle 操控整个项目。
+
+</pre>
+
+<h1 id="jenkins-插件安装方法">Jenkins 插件安装方法</h1>
+
+<p>Jenkins 是一个平台，真正实现功能的是插件。<br />
+丰富的插件支持使我们可以方便地打通版本库、测试构建环境、线上环境的所有环节，
+并且丰富友好的通知使用者和开发、管理人员。</p>
+
+<h2 id="通过-web-界面进行安装">通过 Web 界面进行安装</h2>
+
+<h3 id="安装最新版本">安装最新版本</h3>
+
+<p><code class="highlighter-rouge">首页-&gt;左侧 Manage Jenkins-&gt;Manage Plugins-&gt;Availabe-&gt;右上角 Filter</code>
+通过关键词过滤相关插件后选择进行安装。</p>
+
+<h3 id="安装指定版本">安装指定版本</h3>
+
+<p>点击插件 wiki 页面上的下载链接，选择下载一个老版本的插件。<br />
+<code class="highlighter-rouge">首页-&gt;左侧 Manage Jenkins-&gt;Manage Plugins-&gt;Advanced-&gt;Upload Plugin</code>，从这里上传安装。</p>
+
+<h1 id="手动安装">手动安装</h1>
+
+<p>保存下载好的 <code class="highlighter-rouge">*.hpi/*.jpi</code> 文件到 Jenkins 插件目录 <code class="highlighter-rouge">/var/lib/jenkins/plugins</code>。<br />
+然后需要重启 Jenkins。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://wiki.jenkins-ci.org/display/JENKINS/Plugins">Plugins</a><br />
+<a href="http://www.imooc.com/article/11895">Jenkins－持续集成平台(安装篇)</a><br />
+<a href="http://skyseraph.com/2016/07/18/Tools/Jenkins%20Gitlab%E6%8C%81%E7%BB%AD%E9%9B%86%E6%88%90%E6%89%93%E5%8C%85%E5%B9%B3%E5%8F%B0%E6%90%AD%E5%BB%BA/">Jenkins Gitlab 持续集成打包平台搭建</a><br />
+<a href="http://www.ibm.com/developerworks/cn/opensource/os-autotesting-jenkins-testing/">集成 Jenkins 和 TestNG 实现自助式自动化测试平台</a></p>
+:ET

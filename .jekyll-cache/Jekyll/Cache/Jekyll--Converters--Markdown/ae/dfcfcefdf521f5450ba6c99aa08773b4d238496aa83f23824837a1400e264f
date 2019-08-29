@@ -1,0 +1,54 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>之前说到在 Linux 下使用 prozilla 进行下载加速，
+其中一个原因就是 prozilla 是多线程程序，可以同时打开多个连接，而 wget 不是一个多线程的程序。<br />
+我多想了一下，那怎么判断一个程序进程是单线程还是多线程的？</p>
+
+<h1 id="根据-procpidtask-下子目录个数来判断一个程序进程是否是多线程">根据 /proc/PID/task 下子目录个数来判断一个程序进程是否是多线程</h1>
+
+<p>下面来进行测试验证下：</p>
+
+<p>1、使用 wget 下载一个文件，相关输出如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@iZ25p102vo3Z ~]# ps <span class="nt">-ef</span> | <span class="nb">grep </span>wget
+root     31644 31570  0 15:10 pts/0    00:00:00 wget <span class="nt">--limit-rate</span><span class="o">=</span>20k http://xxx.xx
+root     31646 31612  0 15:10 pts/2    00:00:00 <span class="nb">grep</span> <span class="nt">--color</span><span class="o">=</span>auto wget
+<span class="o">[</span>root@iZ25p102vo3Z ~]# ll /proc/31644/task
+total 0
+dr-xr-xr-x 6 root root 0 Feb 25 15:10 31644
+
+</code></pre></div></div>
+
+<p>可以看到/proc/31644/task/下只有一个目录，验证了 wget 是一个单线程程序。</p>
+
+<p>2、使用 prozilla 下载一个文件，开启 10 个线程，相关输出如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@iZ25p102vo3Z ~]# ps <span class="nt">-ef</span> | <span class="nb">grep </span>proz
+root     31659 31570  0 15:17 pts/0    00:00:00 proz <span class="nt">-k</span><span class="o">=</span>10 <span class="nt">-f</span> <span class="nt">--max-bps</span><span class="o">=</span>102400 http://xxx.xx
+root     31686 31612  0 15:18 pts/2    00:00:00 <span class="nb">grep</span> <span class="nt">--color</span><span class="o">=</span>auto proz
+<span class="o">[</span>root@iZ25p102vo3Z ~]# ll /proc/31659/task/
+total 0
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31659
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31667
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31668
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31669
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31670
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31671
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31672
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31673
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31674
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31675
+dr-xr-xr-x 6 root root 0 Feb 25 15:18 31676
+
+</code></pre></div></div>
+
+<p>可以看到<code class="highlighter-rouge">/proc/31659/task/</code>下有多个目录，验证了 prozilla 是一个多线程程序。</p>
+
+<h1 id="使用-ps--efl-命令">使用 ps -efL 命令</h1>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://stackoverflow.com/questions/4125898/linux-detect-at-runtime-that-a-process-have-multiple-threads">Linux: detect at runtime that a process have multiple threads</a></p>
+
+:ET

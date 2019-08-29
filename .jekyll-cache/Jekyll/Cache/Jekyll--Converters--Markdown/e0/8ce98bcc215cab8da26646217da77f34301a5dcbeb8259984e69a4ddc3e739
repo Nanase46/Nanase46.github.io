@@ -1,0 +1,22 @@
+I"�<h1 id="引言">引言</h1>
+<p>“异地多活” 这个概念在近 2 年在国内经常被提起。<br />
+业界有一些成熟的方案，例如阿里的单元化方案，按用户把业务封闭在一个单元里；腾讯的set方案，还有微博的跨机房方案。下面的我们收集一下相关资料来了解下它们的”异地多活”怎么做的。</p>
+
+<h1 id="异地多活业界方案">异地多活业界方案</h1>
+
+<p><a href="http://www.infoq.com/cn/articles/interview-alibaba-bixuan">专访阿里巴巴毕玄：异地多活数据中心项目的来龙去脉</a><br />
+<a href="http://www.infoq.com/cn/articles/weibo-multi-datacenter-deployments">微博“异地多活”部署经验谈</a><br />
+<a href="http://os.51cto.com/art/201601/503525.htm">腾讯十多个人管理一万多台NoSQL存储服务器的秘密</a> <br />
+<a href="http://www.infoq.com/cn/multi-datacenter">异地多活</a> <br />
+<a href="http://blog.csdn.net/tech_meizu/article/details/49861667">魅族多机房部署方案</a></p>
+
+<h1 id="异地多活优势">异地多活优势</h1>
+
+<p>根据以上业界方案总结如下部分：</p>
+
+<ul>
+  <li>异地灾备</li>
+  <li>动态加速</li>
+  <li>流量均衡</li>
+</ul>
+:ET

@@ -1,0 +1,291 @@
+I"7<h1 id="1-安装-bind-相关软件">1 安装 bind 相关软件</h1>
+
+<p>系统环境：CentOS 6.8 x86_64
+服务器规划：</p>
+
+<ul>
+  <li>192.168.56.13 主 DNS 服务器</li>
+  <li>192.168.56.14 从 DNS 服务器</li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@ns-master ~]# yum <span class="nb">install bind </span>bind-utils bind-devel bind-chroot <span class="nt">-y</span>
+
+<span class="o">[</span>root@ns-master ~]# rpm <span class="nt">-qa</span> | <span class="nb">grep bind
+</span>bind-utils-9.8.2-0.47.rc1.el6.x86_64
+bind-libs-9.8.2-0.47.rc1.el6.x86_64
+bind-chroot-9.8.2-0.47.rc1.el6.x86_64
+bind-9.8.2-0.47.rc1.el6.x86_64
+bind-devel-9.8.2-0.47.rc1.el6.x86_64
+
+</code></pre></div></div>
+<p>同样在从 DNS 服务器上安装以上软件</p>
+
+<h1 id="2-配置文件配置">2 配置文件配置</h1>
+
+<h2 id="21-主-dns-服务器配置">2.1 主 DNS 服务器配置</h2>
+
+<p>以下为主 DNS 服务器上面的配置文件</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/named.conf bind 主配置文件内容如下：</span>
+<span class="o">[</span>root@ns-master ~]# <span class="nb">cat</span> /etc/named.conf
+options <span class="o">{</span>
+  version <span class="s2">"1.1.1"</span><span class="p">;</span>
+  listen-on port 53 <span class="o">{</span>any<span class="p">;</span><span class="o">}</span><span class="p">;</span>
+  directory <span class="s2">"/var/named/chroot/etc/"</span><span class="p">;</span>
+  pid-file <span class="s2">"/var/named/chroot/var/run/named/named.pid"</span><span class="p">;</span>
+  allow-query <span class="o">{</span> any<span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+  Dump-file <span class="s2">"/var/named/chroot/var/log/binddump.db"</span><span class="p">;</span>
+  Statistics-file <span class="s2">"/var/named/chroot/var/log/named_stats"</span><span class="p">;</span>
+  zone-statistics <span class="nb">yes</span><span class="p">;</span>
+  memstatistics-file <span class="s2">"log/mem_stats"</span><span class="p">;</span>
+  empty-zones-enable no<span class="p">;</span>
+  forwarders <span class="o">{</span>202.106.196.115<span class="p">;</span>8.8.8.8<span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+key <span class="s2">"rndc-key"</span> <span class="o">{</span>
+        algorithm hmac-md5<span class="p">;</span>
+        secret <span class="s2">"Eqw4hClGExUWeDkKBX/pBg=="</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+controls <span class="o">{</span>
+       inet 127.0.0.1 port 953
+               allow <span class="o">{</span> 127.0.0.1<span class="p">;</span> <span class="o">}</span> keys <span class="o">{</span> <span class="s2">"rndc-key"</span><span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+ <span class="o">}</span><span class="p">;</span>
+
+logging <span class="o">{</span>
+  channel warning <span class="o">{</span>
+    file <span class="s2">"/var/named/chroot/var/log/dns_warning"</span> versions 10 size 10m<span class="p">;</span>
+    severity warning<span class="p">;</span>
+    print-category <span class="nb">yes</span><span class="p">;</span>
+    print-severity <span class="nb">yes</span><span class="p">;</span>
+    print-time <span class="nb">yes</span><span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+  channel general_dns <span class="o">{</span>
+    file <span class="s2">"/var/named/chroot/var/log/dns_log"</span> versions 10 size 100m<span class="p">;</span>
+    severity info<span class="p">;</span>
+    print-category <span class="nb">yes</span><span class="p">;</span>
+    print-severity <span class="nb">yes</span><span class="p">;</span>
+    print-time <span class="nb">yes</span><span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+  category default <span class="o">{</span>
+    warning<span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+  category queries <span class="o">{</span>
+    general_dns<span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+include <span class="s2">"/var/named/chroot/etc/view.conf"</span><span class="p">;</span>
+
+<span class="c"># /etc/rndc.key 配置文件内容如下：</span>
+<span class="o">[</span>root@ns-master ~]# <span class="nb">cat</span> /etc/rndc.key
+key <span class="s2">"rndc-key"</span> <span class="o">{</span>
+        algorithm hmac-md5<span class="p">;</span>
+        secret <span class="s2">"Eqw4hClGExUWeDkKBX/pBg=="</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+<span class="c"># /etc/rndc.conf 配置文件内容如下：</span>
+<span class="o">[</span>root@ns-master ~]# <span class="nb">cat</span> /etc/rndc.conf
+key <span class="s2">"rndc-key"</span> <span class="o">{</span>
+        algorithm hmac-md5<span class="p">;</span>
+        secret <span class="s2">"Eqw4hClGExUWeDkKBX/pBg=="</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+options <span class="o">{</span>
+        default-key <span class="s2">"rndc-key"</span><span class="p">;</span>
+        default-server 127.0.0.1<span class="p">;</span>
+        default-port 953<span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+
+<span class="c"># /var/named/chroot/etc/view.conf 配置文件内容如下：</span>
+<span class="o">[</span>root@ns-master ~]# <span class="nb">cat</span> /var/named/chroot/etc/view.conf
+view <span class="s2">"View"</span> <span class="o">{</span>
+  zone <span class="s2">"example.com"</span> <span class="o">{</span>
+        <span class="nb">type    </span>master<span class="p">;</span>
+        file    <span class="s2">"example.com.zone"</span><span class="p">;</span>
+        allow-transfer <span class="o">{</span>
+                192.168.56.14<span class="p">;</span>
+        <span class="o">}</span><span class="p">;</span>
+        notify  <span class="nb">yes</span><span class="p">;</span>
+        also-notify <span class="o">{</span>
+                192.168.56.14<span class="p">;</span>
+        <span class="o">}</span><span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+<span class="c"># /var/named/chroot/etc/example.com.zone 区域文件内容如下：</span>
+<span class="o">[</span>root@ns-master ~]# <span class="nb">cat</span> /var/named/chroot/etc/example.com.zone
+<span class="nv">$ORIGIN</span> <span class="nb">.</span>
+<span class="nv">$TTL</span> 3600       <span class="p">;</span> 1 hour
+example.com                  IN SOA  op.example.com. dns.example.com. <span class="o">(</span>
+                                2000       <span class="p">;</span> serial
+                                900        <span class="p">;</span> refresh <span class="o">(</span>15 minutes<span class="o">)</span>
+                                600        <span class="p">;</span> retry <span class="o">(</span>10 minutes<span class="o">)</span>
+                                86400      <span class="p">;</span> expire <span class="o">(</span>1 day<span class="o">)</span>
+                                3600       <span class="p">;</span> minimum <span class="o">(</span>1 hour<span class="o">)</span>
+                                <span class="o">)</span>
+                        NS      op.example.com.
+<span class="nv">$ORIGIN</span> example.com.
+shanks              A       1.2.3.4
+op              A       1.2.3.4
+
+<span class="c"># 以上配置文件配置好以后，修改目录权限，启动 named</span>
+<span class="o">[</span>root@ns-master ~]# <span class="nb">cd</span> /var <span class="o">&amp;&amp;</span> <span class="nb">chown</span> <span class="nt">-R</span> named.named named/
+<span class="o">[</span>root@ns-master var]# /etc/init.d/named start
+Starting named:                                            <span class="o">[</span>  OK  <span class="o">]</span>
+<span class="o">[</span>root@ns-master var]# chkconfig named on
+
+<span class="c"># 测试 DNS 服务器响应</span>
+<span class="o">[</span>root@ns-master var]# dig @127.0.0.1 a.example.com
+
+<span class="p">;</span> &lt;&lt;<span class="o">&gt;&gt;</span> DiG 9.8.2rc1-RedHat-9.8.2-0.47.rc1.el6 &lt;&lt;<span class="o">&gt;&gt;</span> @127.0.0.1 a.example.com
+<span class="p">;</span> <span class="o">(</span>1 server found<span class="o">)</span>
+<span class="p">;;</span> global options: +cmd
+<span class="p">;;</span> Got answer:
+<span class="p">;;</span> -&gt;&gt;HEADER<span class="o">&lt;&lt;-</span> <span class="no">opcode</span><span class="sh">: QUERY, status: NXDOMAIN, id: 29101
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;a.example.com.			IN	A
+
+;; AUTHORITY SECTION:
+example.com.		3600	IN	SOA	op.example.com. dns.example.com. 2000 900 600 86400 3600
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+;; WHEN: Fri Jul  8 20:00:59 2016
+;; MSG SIZE  rcvd: 74
+
+# 以上就是配置好了主 DNS 服务器
+</span></code></pre></div></div>
+
+<h2 id="22-从-dns-服务器配置">2.2 从 DNS 服务器配置</h2>
+
+<p>从 DNS 服务器上面的以下配置文件与主 DNS 服务器上面的相同：</p>
+
+<ul>
+  <li>/etc/named.conf</li>
+  <li>/etc/rndc.key</li>
+  <li>/etc/rndc.conf</li>
+</ul>
+
+<p>从 DNS 服务器上配置以上文件（与主 DNS 服务器上面的相同）。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> <span class="o">&gt;</span> /etc/named.conf <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+options {
+  version "1.1.1";
+  listen-on port 53 {any;};
+  directory "/var/named/chroot/etc/";
+  pid-file "/var/named/chroot/var/run/named/named.pid";
+  allow-query { any; };
+  Dump-file "/var/named/chroot/var/log/binddump.db";
+  Statistics-file "/var/named/chroot/var/log/named_stats";
+  zone-statistics yes;
+  memstatistics-file "log/mem_stats";
+  empty-zones-enable no;
+  forwarders {202.106.196.115;8.8.8.8; };
+};
+
+key "rndc-key" {
+        algorithm hmac-md5;
+        secret "Eqw4hClGExUWeDkKBX/pBg==";
+};
+
+controls {
+       inet 127.0.0.1 port 953
+               allow { 127.0.0.1; } keys { "rndc-key"; };
+ };
+
+logging {
+  channel warning {
+    file "/var/named/chroot/var/log/dns_warning" versions 10 size 10m;
+    severity warning;
+    print-category yes;
+    print-severity yes;
+    print-time yes;
+  };
+  channel general_dns {
+    file "/var/named/chroot/var/log/dns_log" versions 10 size 100m;
+    severity info;
+    print-category yes;
+    print-severity yes;
+    print-time yes;
+  };
+  category default {
+    warning;
+  };
+  category queries {
+    general_dns;
+  };
+};
+
+include "/var/named/chroot/etc/view.conf";
+</span><span class="no">EOF
+
+</span><span class="nb">cat</span> <span class="o">&gt;</span> /etc/rndc.key <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+key "rndc-key" {
+        algorithm hmac-md5;
+        secret "Eqw4hClGExUWeDkKBX/pBg==";
+};
+</span><span class="no">EOF
+
+</span><span class="nb">cat</span> <span class="o">&gt;</span> /etc/rndc.conf <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+key "rndc-key" {
+        algorithm hmac-md5;
+        secret "Eqw4hClGExUWeDkKBX/pBg==";
+};
+
+options {
+        default-key "rndc-key";
+        default-server 127.0.0.1;
+        default-port 953;
+};
+</span><span class="no">EOF
+
+</span><span class="c"># 从 DNS 服务器上 /var/named/chroot/etc/view.conf 和主 DNS 服务器不一样，配置如下：</span>
+
+<span class="o">[</span>root@ns-slave ~]# <span class="nb">cat</span> /var/named/chroot/etc/view.conf
+view <span class="s2">"SlaveView"</span> <span class="o">{</span>
+        zone <span class="s2">"example.com"</span> <span class="o">{</span>
+             <span class="nb">type    </span>slave<span class="p">;</span>
+             masters <span class="o">{</span>192.168.56.13<span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+             file    <span class="s2">"slave.example.com.zone"</span><span class="p">;</span>
+        <span class="o">}</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+<span class="c"># 以上配置文件配置好以后，修改目录权限，启动 named</span>
+<span class="nb">cd</span> /var <span class="o">&amp;&amp;</span> <span class="nb">chown</span> <span class="nt">-R</span> named.named named/
+/etc/init.d/named start
+chkconfig named on
+
+<span class="c"># 当在 /var/named/chroot/etc 目录下有 slave.example.com.zone 这个文件时就说明 DNS 主从同步成功了</span>
+<span class="o">[</span>root@ns-slave var]# ll /var/named/chroot/etc/slave.example.com.zone 
+<span class="nt">-rw-r--r--</span> 1 named named 331 Jul  8 20:43 /var/named/chroot/etc/slave.example.com.zone
+
+<span class="c"># 使用 dig 命令测试</span>
+<span class="o">[</span>root@ns-slave var]# dig @192.168.56.14 op.example.com
+
+<span class="p">;</span> &lt;&lt;<span class="o">&gt;&gt;</span> DiG 9.8.2rc1-RedHat-9.8.2-0.47.rc1.el6 &lt;&lt;<span class="o">&gt;&gt;</span> @192.168.56.14 op.example.com
+<span class="p">;</span> <span class="o">(</span>1 server found<span class="o">)</span>
+<span class="p">;;</span> global options: +cmd
+<span class="p">;;</span> Got answer:
+<span class="p">;;</span> -&gt;&gt;HEADER<span class="o">&lt;&lt;-</span> <span class="no">opcode</span><span class="sh">: QUERY, status: NOERROR, id: 4234
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 1, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;op.example.com.			IN	A
+
+;; ANSWER SECTION:
+op.example.com.		3600	IN	A	1.2.3.4
+
+;; AUTHORITY SECTION:
+example.com.		3600	IN	NS	op.example.com.
+
+;; Query time: 0 msec
+;; SERVER: 192.168.56.14#53(192.168.56.14)
+;; WHEN: Fri Jul  8 20:45:24 2016
+;; MSG SIZE  rcvd: 62
+
+</span></code></pre></div></div>
+:ET

@@ -1,0 +1,43 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>前面一直讲各种具体的负载均衡软件（LVS，HAProxy, Nginx等），它们一般同时来实现集群的高可用，<br />
+但这个负载均衡软件本身还存在单点故障，所以我们也要实现负载均衡软件的高可用，一般我们使用 Keepalived 来实现的。</p>
+
+<h1 id="keepalived-简介">Keepalived 简介</h1>
+
+<pre>
+
+What is Keepalived ?
+
+Keepalived is a routing software written in C. 
+The main goal of this project is to provide simple and robust facilities for loadbalancing and 
+high-availability to Linux system and Linux based infrastructures. 
+Loadbalancing framework relies on well-known and widely used Linux Virtual Server (IPVS) kernel module 
+providing Layer4 loadbalancing. 
+Keepalived implements a set of checkers to dynamically and adaptively maintain and 
+manage loadbalanced server pool according their health. 
+On the other hand high-availability is achieved by VRRP protocol. 
+VRRP is a fundamental brick for router failover. 
+In addition, Keepalived implements a set of hooks to the VRRP finite state machine 
+providing low-level and high-speed protocol interactions. 
+Keepalived frameworks can be used independently or all together to provide resilient infrastructures.
+
+</pre>
+
+<pre>
+
+从这段描述中，我们可以得到几个有用的信息：
+
+1、 Keepalived 是 LVS 的扩展项目，因此它们之间具备良好的兼容性。这点应该是 Keepalived 部署比其他类似工具能更简洁的原因吧！
+2、 通过对服务器池对象的健康检查，实现对失效机器/服务的故障隔离。
+3、 负载均衡器之间的失败切换 failover，是通过 VRRPv2（Virtual Router Redundancy Protocol）stack 实现的。
+
+</pre>
+
+<p>几个推荐的学习资料参考 Ref。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://www.keepalived.org/">Keepalived 官网</a><br />
+<a href="http://www.keepalived.org/pdf/sery-lvs-cluster.pdf">LVS + Keepalived Chinese application doc</a><br />
+Keepalived 权威指南</p>
+:ET

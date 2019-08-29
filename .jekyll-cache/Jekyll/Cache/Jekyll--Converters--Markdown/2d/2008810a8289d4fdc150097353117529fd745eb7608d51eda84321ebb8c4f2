@@ -1,0 +1,21 @@
+I"<h1 id="引言">引言</h1>
+<p>这几天配置 SaltStack WebGUI，遇到了 glob 这个 Salt 命令默认匹配目标的方式，有些不太理解。<br />
+所以查了下。</p>
+
+<h1 id="linux-shell-中使用的通配符称为-glob">Linux Shell 中使用的通配符称为 glob</h1>
+
+<blockquote>
+
+  <p>glob 听起来不太懂，其实就 Shell-Style，Shell 里能用的，它也就能用。
+在 Linux 中，glob 是用来匹配路径名的通配符。
+具体man 7 glob</p>
+</blockquote>
+
+<p>Salt 命令中的 glob 也应该是 Shell 中的 glob。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://lixcto.blog.51cto.com/4834175/1428659">saltstack（二）target</a><br />
+<a href="http://www.cnblogs.com/chaoguo1234/p/5313721.html">Shell glob</a><br />
+man 7 glob</p>
+
+:ET

@@ -1,0 +1,21 @@
+I"}<h1 id="引言">引言</h1>
+
+<p>通过 SaltStack 官方 yum 源升级安装最新稳定版本的 salt 时，遇到如下 yum 错误：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>Errno 14] problem making ssl connection
+Trying other mirror.
+</code></pre></div></div>
+
+<h1 id="安装-ca-certificates-解决-yum-errno-14-错误提示">安装 ca-certificates 解决 yum Errno 14 错误提示</h1>
+
+<p>查了下，yum 安装 ca-certificates 即可。<br />
+ca-certificates 具体是什么？字面上看是和 CA 认证相关。通过<code class="highlighter-rouge">yum search all ca-certificates</code>查询如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ca-certificates.noarch : The Mozilla CA root certificate bundle
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://www.koalaxiaot.me/2015/01/10/yum-Errno14-fixed.html">yum Errno 14 问题解决</a><br />
+<a href="http://blog.csdn.net/houdl_love/article/details/44153895">[Errno 14] problem making ssl connection 问题解决</a></p>
+
+:ET

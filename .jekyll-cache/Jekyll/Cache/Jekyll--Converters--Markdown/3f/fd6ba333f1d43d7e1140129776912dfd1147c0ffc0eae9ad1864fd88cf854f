@@ -1,0 +1,62 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>一直用 dmesg，但在服务器上查看时，时间戳不易读。<br />
+所以查下用什么方法让其变成 human readable.</p>
+
+<h1 id="dmesg-简介">dmesg 简介</h1>
+
+<pre>
+
+dmesg - print or control the kernel ring buffer
+dmesg is used to examine or control the kernel ring buffer.
+
+The default action is to read all messages from kernel ring buffer.
+
+</pre>
+
+<p>终端输入 dmesg，可以看到每行最开始显示的是一个中括号，里面的数字为 timestamp，时间戳，
+该时间指示的系统从开机到现在的运行时间，单位为秒。</p>
+
+<h1 id="dmesg-时间戳转换">dmesg 时间戳转换</h1>
+
+<h2 id="1dmesg--t-参数">1.dmesg -T 参数</h2>
+
+<pre>
+
+-T, --ctime
+       Print human readable timestamps.  The timestamp could be inaccurate!
+       The time source used for the logs is not updated after system SUSPEND/RESUME.
+
+</pre>
+
+<p>这个参数在较老版本的 util-linux 中并没有，还要注意这个时间可能不准确。</p>
+
+<h2 id="2-使用命令或其他工具转换">2. 使用命令或其他工具转换</h2>
+
+<p>使用 bash 命令转换：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">date</span> <span class="nt">-d</span> <span class="s2">"1970-01-01 UTC </span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">date</span> +%s<span class="si">)</span><span class="s2">-</span><span class="si">$(</span><span class="nb">cat</span> /proc/uptime|cut <span class="nt">-f</span> 1 <span class="nt">-d</span><span class="s1">' '</span><span class="si">)</span><span class="s2">+[dmesg显示的时间]"</span>|bc <span class="sb">`</span><span class="s2"> seconds"</span>
+</code></pre></div></div>
+
+<p>当然还有其他工具，比如这个上 Python 写的<a href="https://gist.github.com/saghul/542780">pydmesg</a></p>
+
+<h2 id="3-配置-rsyslog将-kernel-日志输出到文件">3. 配置 rsyslog,将 kernel 日志输出到文件</h2>
+
+<p>修改<code class="highlighter-rouge">/etc/[r]syslog.conf</code>，添加如下配置：</p>
+
+<pre>
+
+kern.*                                                  /var/log/kern.log
+
+</pre>
+
+<p>后续可以在<code class="highlighter-rouge">/var/log/kern.log</code>中查看 kernel 日志信息。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://blog.chinaunix.net/uid-29054214-id-5114125.html">Linux dmesg 输出没有时间列</a><br />
+<a href="http://blog.csdn.net/buptapple/article/details/8568938">Linux 时间戳转换/dmesg 时间转换</a> 
+<a href="http://blog.tankywoo.com/2015/02/03/about-timestamp-in-dmesg.html">关于 dmesg 的 timestamp</a><br />
+<a href="https://linux.cn/article-3587-1.html">Linux 系统中‘dmesg’命令处理故障和收集系统信息的 7 种用法</a><br />
+<a href="http://jaseywang.me/2012/07/27/dmesg-%E4%BB%A5-human-readable-%E7%9A%84%E6%96%B9%E5%BC%8F%E6%98%BE%E7%A4%BA%E6%97%B6%E9%97%B4/">dmesg 以 human readable 的方式显示时间</a><br />
+<a href="https://linux.cn/article-4835-1.html">CentOS 上配置 rsyslog 客户端用以远程记录日志</a></p>
+:ET

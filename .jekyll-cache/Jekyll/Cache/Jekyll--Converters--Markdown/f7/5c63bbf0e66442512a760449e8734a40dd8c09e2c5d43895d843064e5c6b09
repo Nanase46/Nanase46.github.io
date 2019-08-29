@@ -1,0 +1,269 @@
+I"�I<h1 id="引言">引言</h1>
+
+<p>前一篇文章，说明了自动化部署的目标及流程，现在我们拿运维工程师熟悉的 Shell 来实践这个流程。</p>
+
+<h1 id="规划">规划</h1>
+
+<ol>
+  <li>用户配置（所有的 Web 服务都应该使用普通用户，一个生产实践：所有的 Web 服务不监听 80 端口，而是由负载均衡来监听。）</li>
+  <li>部署机到目标机的 SSH 免密钥配置</li>
+  <li>部署目录规划及配置</li>
+  <li>目标机 Webroot 配置（本文实例演示使用 httpd ）</li>
+</ol>
+
+<h1 id="gitlab-配置">GitLab 配置</h1>
+
+<p>使用 GitLab 管理公司项目代码仓库</p>
+
+<ol>
+  <li>修改 external_url 等</li>
+  <li>关闭注册</li>
+  <li>先创建组，再创建项目</li>
+  <li>部署机拉取 GitLab 项目仓库配置 （本文 192.168.56.11 作为部署机，192.168.56.11/12 也作为部署的目标机）</li>
+  <li>开发机 git push 配置 （本文 192.168.56.12 作为开发机）</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 在部署机创建部署目录放置代码、配置文件、压缩包等</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> /deploy/code/web-demo		
+<span class="nb">mkdir</span> <span class="nt">-p</span> /deploy/config/web-demo/base
+<span class="nb">mkdir</span> <span class="nt">-p</span> /deploy/config/web-demo/other
+<span class="nb">mkdir</span> <span class="nt">-p</span> /deploy/tar
+<span class="nb">mkdir</span> <span class="nt">-p</span> /deploy/tmp
+<span class="nb">chown</span> <span class="nt">-R</span> www:www /deploy
+
+<span class="c"># 在目标机上创建代码、配置等的放置目录</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> /opt/webroot
+<span class="nb">mkdir</span> /webroot
+<span class="nb">chown</span> <span class="nt">-R</span> www:www /opt/webroot
+<span class="nb">chown</span> <span class="nt">-R</span> www:www /webroot
+
+</code></pre></div></div>
+
+<h1 id="自动化部署及回滚脚本">自动化部署及回滚脚本</h1>
+
+<p>内容如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c">#!/bin/bash</span>
+
+<span class="c"># Node List</span>
+<span class="nv">PRE_LIST</span><span class="o">=</span><span class="s2">"192.168.56.11"</span>		<span class="c"># 预生产环境节点</span>
+<span class="nv">GROUP1_LIST</span><span class="o">=</span><span class="s2">"192.168.56.12"</span>		<span class="c"># 分组 1</span>
+<span class="nv">ROLLBACK_LIST</span><span class="o">=</span><span class="s2">"192.168.56.11 192.168.56.12"</span> <span class="c"># 回滚列表</span>
+
+<span class="c"># Date/Time Veriables</span>
+<span class="nv">LOG_DATE</span><span class="o">=</span><span class="s1">'date "+%Y-%m-%d"'</span>
+<span class="nv">LOG_TIME</span><span class="o">=</span><span class="s1">'date "+%H-%M-%S"'</span>
+
+<span class="nv">CDATE</span><span class="o">=</span><span class="si">$(</span><span class="nb">date</span> <span class="s2">"+%Y-%m-%d"</span><span class="si">)</span>
+<span class="nv">CTIME</span><span class="o">=</span><span class="si">$(</span><span class="nb">date</span> <span class="s2">"+%H-%M-%S"</span><span class="si">)</span>
+
+<span class="c"># Shell Env</span>
+<span class="nv">SHELL_NAME</span><span class="o">=</span><span class="s2">"deploy_all.sh"</span>
+<span class="nv">SHELL_DIR</span><span class="o">=</span><span class="s2">"/home/www/"</span>
+<span class="nv">SHELL_LOG</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">SHELL_DIR</span><span class="k">}</span><span class="s2">/</span><span class="k">${</span><span class="nv">SHELL_NAME</span><span class="k">}</span><span class="s2">.log"</span>
+
+<span class="c"># Code Env</span>
+<span class="nv">PRO_NAME</span><span class="o">=</span><span class="s2">"web-demo"</span>
+<span class="nv">CODE_DIR</span><span class="o">=</span><span class="s2">"/deploy/code/web-demo"</span>
+<span class="nv">CONFIG_DIR</span><span class="o">=</span><span class="s2">"/deploy/config/web-demo"</span>
+<span class="nv">TMP_DIR</span><span class="o">=</span><span class="s2">"/deploy/tmp"</span>
+<span class="nv">TAR_DIR</span><span class="o">=</span><span class="s2">"/deploy/tar"</span>
+<span class="nv">LOCK_FILE</span><span class="o">=</span><span class="s2">"/tmp/deploy.lock"</span>
+
+usage<span class="o">(){</span>
+	<span class="nb">echo</span> <span class="s2">$"Usage: </span><span class="nv">$0</span><span class="s2"> {deploy | rollback [ list | version ]}"</span>
+<span class="o">}</span>
+
+writelog<span class="o">(){</span>
+   <span class="nv">LOGINFO</span><span class="o">=</span><span class="nv">$1</span>
+   <span class="nb">echo</span> <span class="s2">"</span><span class="k">${</span><span class="nv">CDATE</span><span class="k">}</span><span class="s2"> </span><span class="k">${</span><span class="nv">CTIME</span><span class="k">}</span><span class="s2">: </span><span class="k">${</span><span class="nv">SHELL_NAME</span><span class="k">}</span><span class="s2"> : </span><span class="k">${</span><span class="nv">LOGINFO</span><span class="k">}</span><span class="s2"> "</span>  <span class="o">&gt;&gt;</span> <span class="k">${</span><span class="nv">SHELL_LOG</span><span class="k">}</span>
+<span class="o">}</span>
+
+shell_lock<span class="o">(){</span>
+	<span class="nb">touch</span> <span class="k">${</span><span class="nv">LOCK_FILE</span><span class="k">}</span>
+<span class="o">}</span>
+
+shell_unlock<span class="o">(){</span>
+	<span class="nb">rm</span> <span class="nt">-f</span> <span class="k">${</span><span class="nv">LOCK_FILE</span><span class="k">}</span>
+<span class="o">}</span>
+
+url_test<span class="o">(){</span>
+	<span class="nv">URL</span><span class="o">=</span><span class="nv">$1</span>
+	curl <span class="nt">-s</span> <span class="nt">--head</span> <span class="nv">$URL</span> | <span class="nb">grep</span> <span class="s1">'200 OK'</span>
+	<span class="k">if</span> <span class="o">[</span> <span class="nv">$?</span> <span class="nt">-ne</span> 0 <span class="o">]</span><span class="p">;</span> <span class="k">then
+		</span>shell_unlock<span class="p">;</span>
+		<span class="nb">echo</span> <span class="s2">"test error"</span> <span class="o">&amp;&amp;</span> <span class="nb">exit</span><span class="p">;</span>
+	<span class="k">fi</span>
+<span class="o">}</span>
+
+code_get<span class="o">(){</span>
+	writelog <span class="s2">"code_get"</span><span class="p">;</span>
+	<span class="nb">cd</span> <span class="nv">$CODE_DIR</span> <span class="o">&amp;&amp;</span> git pull		<span class="c"># 事先要在部署机上 git clone 项目代码</span>
+	<span class="nb">cp</span> <span class="nt">-r</span> <span class="k">${</span><span class="nv">CODE_DIR</span><span class="k">}</span> <span class="k">${</span><span class="nv">TMP_DIR</span><span class="k">}</span>/
+	<span class="nv">API_VERL</span><span class="o">=</span><span class="si">$(</span>git show | <span class="nb">grep </span>commit | <span class="nb">cut</span> <span class="nt">-d</span> <span class="s1">' '</span> <span class="nt">-f2</span><span class="si">)</span>
+	<span class="nv">API_VER</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="k">${</span><span class="nv">API_VERL</span>:0:6<span class="k">}</span><span class="si">)</span>
+<span class="o">}</span>
+
+code_build<span class="o">(){</span>
+	<span class="nb">echo </span>code_build
+<span class="o">}</span>
+
+
+code_config<span class="o">(){</span>
+	writelog <span class="s2">"code_config"</span>
+	/bin/cp <span class="nt">-r</span> <span class="k">${</span><span class="nv">CONFIG_DIR</span><span class="k">}</span>/base/<span class="k">*</span> <span class="k">${</span><span class="nv">TMP_DIR</span><span class="k">}</span>/<span class="s2">"</span><span class="k">${</span><span class="nv">PRO_NAME</span><span class="k">}</span><span class="s2">"</span>
+	<span class="nv">PKG_NAME</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">PRO_NAME</span><span class="k">}</span><span class="s2">"</span>_<span class="s2">"</span><span class="nv">$API_VER</span><span class="s2">"</span>_<span class="s2">"</span><span class="k">${</span><span class="nv">CDATE</span><span class="k">}</span><span class="s2">-</span><span class="k">${</span><span class="nv">CTIME</span><span class="k">}</span><span class="s2">"</span>
+	<span class="nb">cd</span> <span class="k">${</span><span class="nv">TMP_DIR</span><span class="k">}</span> <span class="o">&amp;&amp;</span> <span class="nb">mv</span> <span class="k">${</span><span class="nv">PRO_NAME</span><span class="k">}</span> <span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span>
+<span class="o">}</span>
+
+code_tar<span class="o">(){</span>
+	writelog <span class="s2">"code_tar"</span>
+	<span class="nb">cd</span> <span class="k">${</span><span class="nv">TMP_DIR</span><span class="k">}</span> <span class="o">&amp;&amp;</span> <span class="nb">tar </span>czf <span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span>.tar.gz <span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span>
+	writelog <span class="s2">"</span><span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span><span class="s2">.tar.gz"</span>
+<span class="o">}</span>
+
+code_scp<span class="o">(){</span>
+	writelog <span class="s2">"code_scp"</span>
+	<span class="k">for </span>node <span class="k">in</span> <span class="nv">$PRE_LIST</span><span class="p">;</span><span class="k">do
+		</span>scp <span class="k">${</span><span class="nv">TMP_DIR</span><span class="k">}</span>/<span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span>.tar.gz <span class="nv">$node</span>:/opt/webroot/
+	<span class="k">done
+
+	for </span>node <span class="k">in</span> <span class="nv">$GROUP1_LIST</span><span class="p">;</span><span class="k">do
+		</span>scp <span class="k">${</span><span class="nv">TMP_DIR</span><span class="k">}</span>/<span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span>.tar.gz <span class="nv">$node</span>:/opt/webroot/
+	<span class="k">done</span>
+<span class="o">}</span>
+
+pre_deploy<span class="o">(){</span>
+	writelog <span class="s2">"remove from cluster"</span>
+	ssh <span class="nv">$PRE_LIST</span> <span class="s2">"cd /opt/webroot &amp;&amp; tar zxf </span><span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span><span class="s2">.tar.gz"</span>
+	ssh <span class="nv">$PRE_LIST</span> <span class="s2">"rm -f /webroot/web-demo &amp;&amp; ln -s /opt/webroot/</span><span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span><span class="s2"> /webroot/web-demo"</span>
+<span class="o">}</span>
+
+pre_test<span class="o">(){</span>
+	url_test <span class="s2">"http://</span><span class="k">${</span><span class="nv">PRE_LIST</span><span class="k">}</span><span class="s2">/index.html"</span>
+	<span class="nb">echo</span> <span class="s2">"add to cluster"</span>
+<span class="o">}</span>
+
+group1_deploy<span class="o">(){</span>
+	writelog <span class="s2">"remove from cluster"</span>
+	<span class="k">for </span>node <span class="k">in</span> <span class="nv">$GROUP1_LIST</span><span class="p">;</span><span class="k">do
+		</span>ssh <span class="nv">$node</span> <span class="s2">"cd /opt/webroot &amp;&amp; tar zxf </span><span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span><span class="s2">.tar.gz"</span>
+		ssh <span class="nv">$node</span> <span class="s2">"rm -f /webroot/web-demo &amp;&amp; ln -s /opt/webroot/</span><span class="k">${</span><span class="nv">PKG_NAME</span><span class="k">}</span><span class="s2"> /webroot/web-demo"</span>
+	<span class="k">done
+	</span>scp <span class="k">${</span><span class="nv">CONFIG_DIR</span><span class="k">}</span>/other/192.168.56.12.crontab.xml 192.168.56.12:/webroot/web-demo/crontab.xml
+<span class="o">}</span>
+
+group1_test<span class="o">(){</span>
+	url_test <span class="s2">"http://192.168.56.12:8081/index.html"</span>		<span class="c"># 192.168.56.12 80 端口被 GitLab Nginx 占用</span>
+	<span class="nb">echo</span> <span class="s2">"add to cluster"</span>
+<span class="o">}</span>
+
+rollback_fun<span class="o">(){</span>
+	<span class="k">for </span>node <span class="k">in</span> <span class="nv">$ROLLBACK_LIST</span><span class="p">;</span><span class="k">do
+	</span>ssh <span class="nv">$node</span> <span class="s2">"rm -f /webroot/web-demo &amp;&amp; ln -s /opt/webroot/</span><span class="nv">$1</span><span class="s2"> /webroot/web-demo"</span>
+	<span class="k">done</span>
+<span class="o">}</span>
+
+rollback<span class="o">(){</span>
+<span class="k">if</span> <span class="o">[</span> <span class="nt">-z</span> <span class="nv">$1</span> <span class="o">]</span><span class="p">;</span><span class="k">then
+	</span>shell_unlock<span class="p">;</span>
+	<span class="nb">echo</span> <span class="s2">"Please input rollback version"</span> <span class="o">&amp;&amp;</span> <span class="nb">exit</span><span class="p">;</span>
+<span class="k">fi
+    case</span> <span class="nv">$1</span> <span class="k">in
+	</span>list<span class="p">)</span>
+		<span class="nb">ls</span> <span class="nt">-l</span> /opt/webroot/<span class="k">*</span>.tar.gz
+		<span class="p">;;</span>
+	<span class="k">*</span><span class="p">)</span>
+		rollback_fun <span class="nv">$1</span>
+    <span class="k">esac</span>
+<span class="o">}</span>
+
+main<span class="o">(){</span>
+   <span class="k">if</span> <span class="o">[</span> <span class="nt">-f</span> <span class="nv">$LOCK_FILE</span> <span class="o">]</span><span class="p">;</span><span class="k">then
+	</span><span class="nb">echo</span> <span class="s2">"Deploy is running"</span> <span class="o">&amp;&amp;</span> <span class="nb">exit</span><span class="p">;</span>
+   <span class="k">fi
+    </span><span class="nv">DEPLOY_METHOD</span><span class="o">=</span><span class="nv">$1</span>
+    <span class="nv">ROLLBACK_VER</span><span class="o">=</span><span class="nv">$2</span>
+    <span class="k">case</span> <span class="nv">$DEPLOY_METHOD</span> <span class="k">in
+	</span>deploy<span class="p">)</span>
+		shell_lock<span class="p">;</span>
+		code_get<span class="p">;</span>
+		code_build<span class="p">;</span>
+		code_config<span class="p">;</span>
+		code_tar<span class="p">;</span>
+		code_scp<span class="p">;</span>
+		pre_deploy<span class="p">;</span>
+		pre_test<span class="p">;</span>
+		group1_deploy<span class="p">;</span>
+		group1_test<span class="p">;</span>
+		shell_unlock<span class="p">;</span>
+		<span class="p">;;</span>
+	rollback<span class="p">)</span>
+		shell_lock<span class="p">;</span>
+		rollback <span class="nv">$ROLLBACK_VER</span><span class="p">;</span>
+		shell_unlock<span class="p">;</span>
+		<span class="p">;;</span>
+	<span class="k">*</span><span class="p">)</span>
+		usage<span class="p">;</span>
+    <span class="k">esac</span>
+<span class="o">}</span>
+main <span class="nv">$1</span> <span class="nv">$2</span>
+
+</code></pre></div></div>
+
+<p>以上 Shell 脚本简单实现从 GitLab 拉取最新代码自动部署到目标机和一键回滚到任意版本。</p>
+
+<p>以下为使用方法演示：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 自动部署最新版本</span>
+<span class="o">[</span>www@linux-node1 ~]<span class="nv">$ </span>./deploy_all.sh deploy
+remote: Counting objects: 3, <span class="k">done</span><span class="nb">.</span>
+remote: Total 3 <span class="o">(</span>delta 0<span class="o">)</span>, reused 0 <span class="o">(</span>delta 0<span class="o">)</span>
+Unpacking objects: 100% <span class="o">(</span>3/3<span class="o">)</span>, <span class="k">done</span><span class="nb">.</span>
+From 192.168.56.12:web/web-demo
+   902aff1..fec4758  master     -&gt; origin/master
+Updating 902aff1..fec4758
+Fast-forward
+ index.html | 2 +-
+ 1 file changed, 1 insertion<span class="o">(</span>+<span class="o">)</span>, 1 deletion<span class="o">(</span>-<span class="o">)</span>
+code_build
+web-demo_fec475_2016-08-09-17-11-22.tar.gz                                                                                                                                      100% 8570     8.4KB/s   00:00    
+web-demo_fec475_2016-08-09-17-11-22.tar.gz                                                                                                                                      100% 8570     8.4KB/s   00:00    
+HTTP/1.1 200 OK
+add to cluster
+192.168.56.12.crontab.xml                                                                                                                                                       100%   38     0.0KB/s   00:00    
+HTTP/1.1 200 OK
+add to cluster
+
+<span class="c"># 回滚时的版本列表</span>
+<span class="o">[</span>www@linux-node1 ~]<span class="nv">$ </span>./deploy_all.sh rollback list
+<span class="nt">-rw-rw-r--</span> 1 www www 8031 Aug  9 16:43 /opt/webroot/web-demo_902aff_2016-08-09-16-43-19.tar.gz
+<span class="nt">-rw-rw-r--</span> 1 www www 8030 Aug  9 17:10 /opt/webroot/web-demo_902aff_2016-08-09-17-10-08.tar.gz
+<span class="nt">-rw-rw-r--</span> 1 www www 8570 Aug  9 17:11 /opt/webroot/web-demo_fec475_2016-08-09-17-11-22.tar.gz
+
+<span class="c"># 回滚到指定版本</span>
+<span class="o">[</span>www@linux-node1 ~]<span class="nv">$ </span>./deploy_all.sh rollback web-demo_902aff_2016-08-09-17-10-08
+
+</code></pre></div></div>
+
+<h1 id="总结">总结</h1>
+
+<pre> 
+
+在 IT 管理里面有三大核心要素是 PPT，也就是人员/组织架构（People）、流程（Process）、技术/工具（Tech/Tool）。
+所以说设计一个自动化部署系统，并不是上线几个工具，写几个自动化脚本这么简单。
+设计一个流程，除了流程本身要和我们的组织架构、人员和技术挂钩，而且还要根据企业的实际情况来做，不能好高骛远，
+一上来就设计一个庞大的自动化部署平台，可能并不符合企业现状，又浪费了资源。
+其次，所有架构和流程的设计都是基于业务需求的，那么不同的业务场景，不同的需求可能出现不同的自动化部署的流程和步骤，
+所以本文仅供大家参考。
+最后，还有一点就是流程和思路很重要，具体的实现方法很多，
+看团队的技术水平，可以使用 Python、Shell、PHP 等来实现，不要被某些工具所束缚就行。
+
+</pre>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.unixhot.com/article/31">中小企业自动化部署实践</a></p>
+:ET

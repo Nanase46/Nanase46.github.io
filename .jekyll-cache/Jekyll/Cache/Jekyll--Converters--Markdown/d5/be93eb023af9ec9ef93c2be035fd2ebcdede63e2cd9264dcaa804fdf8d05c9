@@ -1,0 +1,53 @@
+I"�	<h1 id="saltstack-管理任务缓存">SaltStack 管理任务缓存</h1>
+
+<h2 id="默认的任务缓存">默认的任务缓存</h2>
+
+<h3 id="减小默认任务缓存大小">减小默认任务缓存大小</h3>
+
+<h2 id="额外的任务缓存选项">额外的任务缓存选项</h2>
+
+<h1 id="saltstack-存储任务结果到一个外部系统">SaltStack 存储任务结果到一个外部系统</h1>
+
+<h2 id="外部任务缓存---minion-端-returner">外部任务缓存 - Minion 端 Returner</h2>
+
+<h2 id="master-任务缓存---master-端">Master 任务缓存 - Master 端</h2>
+
+<h2 id="配置一个外部或-master-任务缓存">配置一个外部或 Master 任务缓存</h2>
+
+<h3 id="步骤-1理解-salt-returner">步骤 1：理解 Salt Returner</h3>
+
+<h3 id="步骤-2配置-returner">步骤 2：配置 Returner</h3>
+
+<p>配置 Master Job Cache 存储到 MySQL 例子：</p>
+
+<p>在 /etc/salt/master 配置文件中增加如下 Returner 配置：</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">mysql.host</span><span class="pi">:</span> <span class="s1">'</span><span class="s">192.168.56.11'</span>
+<span class="s">mysql.user</span><span class="pi">:</span> <span class="s1">'</span><span class="s">salt'</span>
+<span class="s">mysql.pass</span><span class="pi">:</span> <span class="s1">'</span><span class="s">salt@pw'</span>
+<span class="s">mysql.db</span><span class="pi">:</span> <span class="s1">'</span><span class="s">salt'</span>
+<span class="s">mysql.port</span><span class="pi">:</span> <span class="m">3306</span>
+</code></pre></div></div>
+
+<h3 id="步骤-3启用外部或-master-任务缓存">步骤 3：启用外部或 Master 任务缓存</h3>
+
+<p>配置 Master Job Cache 存储到 MySQL 例子：</p>
+
+<p>在 /etc/salt/master 配置文件中增加如下配置：</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">master_job_cache</span><span class="pi">:</span> <span class="s">mysql</span>
+</code></pre></div></div>
+
+<p>修改 Master 配置文件后，需要重启 Master</p>
+
+<blockquote>
+
+  <p>systemctl restart salt-master</p>
+</blockquote>
+
+<h1 id="ref">Ref</h1>
+
+<p><a href="https://docs.saltstack.com/en/latest/topics/jobs/job_cache.html">MANAGING THE JOB CACHE</a><br />
+<a href="https://docs.saltstack.com/en/latest/topics/jobs/external_cache.html">STORING JOB RESULTS IN AN EXTERNAL SYSTEM</a></p>
+
+:ET

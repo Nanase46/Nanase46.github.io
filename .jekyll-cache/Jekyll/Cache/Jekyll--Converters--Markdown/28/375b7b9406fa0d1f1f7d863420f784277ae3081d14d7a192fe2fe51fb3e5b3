@@ -1,0 +1,126 @@
+I"B#<h1 id="引言">引言</h1>
+<p>之前 Salt 远程执行的学习谈到了 Returners，现在我们来实际配置下 Returners。<br />
+以下 Returners 例子是将 minion 的结果数据发送到 master 的 MySQL 数据库上。</p>
+
+<h1 id="1-minion-上安装-mysql-python">1 Minion 上安装 MySQL-python</h1>
+
+<blockquote>
+
+  <p>To enable this returner, the minion will need the python client for mysql installed.</p>
+</blockquote>
+
+<p>返回数据是 minion 直接返回的，所有的 minion 要装 Python 的 MySQL 客户端</p>
+
+<p>使用 Salt 批量安装 MySQL-python</p>
+<blockquote>
+
+  <p>salt ‘*’ state.single pkg.installed name=MySQL-python</p>
+</blockquote>
+
+<h1 id="2-创建并初始化存放-returners-数据的数据库">2 创建并初始化存放 Returners 数据的数据库</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 使用以下 sql 在 Master 上创建 salt 数据库及相关表</span>
+
+CREATE DATABASE  <span class="sb">`</span>salt<span class="sb">`</span>
+  DEFAULT CHARACTER SET utf8
+  DEFAULT COLLATE utf8_general_ci<span class="p">;</span>
+
+USE <span class="sb">`</span>salt<span class="sb">`</span><span class="p">;</span>
+
+<span class="nt">--</span>
+<span class="nt">--</span> Table structure <span class="k">for </span>table <span class="sb">`</span>jids<span class="sb">`</span>
+<span class="nt">--</span>
+
+DROP TABLE IF EXISTS <span class="sb">`</span>jids<span class="sb">`</span><span class="p">;</span>
+CREATE TABLE <span class="sb">`</span>jids<span class="sb">`</span> <span class="o">(</span>
+  <span class="sb">`</span>jid<span class="sb">`</span> varchar<span class="o">(</span>255<span class="o">)</span> NOT NULL,
+  <span class="sb">`</span>load<span class="sb">`</span> mediumtext NOT NULL,
+  UNIQUE KEY <span class="sb">`</span>jid<span class="sb">`</span> <span class="o">(</span><span class="sb">`</span>jid<span class="sb">`</span><span class="o">)</span>
+<span class="o">)</span> <span class="nv">ENGINE</span><span class="o">=</span>InnoDB DEFAULT <span class="nv">CHARSET</span><span class="o">=</span>utf8<span class="p">;</span>
+CREATE INDEX jid ON jids<span class="o">(</span>jid<span class="o">)</span> USING BTREE<span class="p">;</span>
+
+<span class="nt">--</span>
+<span class="nt">--</span> Table structure <span class="k">for </span>table <span class="sb">`</span>salt_returns<span class="sb">`</span>
+<span class="nt">--</span>
+
+DROP TABLE IF EXISTS <span class="sb">`</span>salt_returns<span class="sb">`</span><span class="p">;</span>
+CREATE TABLE <span class="sb">`</span>salt_returns<span class="sb">`</span> <span class="o">(</span>
+  <span class="sb">`</span>fun<span class="sb">`</span> varchar<span class="o">(</span>50<span class="o">)</span> NOT NULL,
+  <span class="sb">`</span>jid<span class="sb">`</span> varchar<span class="o">(</span>255<span class="o">)</span> NOT NULL,
+  <span class="sb">`</span><span class="k">return</span><span class="sb">`</span> mediumtext NOT NULL,
+  <span class="sb">`</span><span class="nb">id</span><span class="sb">`</span> varchar<span class="o">(</span>255<span class="o">)</span> NOT NULL,
+  <span class="sb">`</span>success<span class="sb">`</span> varchar<span class="o">(</span>10<span class="o">)</span> NOT NULL,
+  <span class="sb">`</span>full_ret<span class="sb">`</span> mediumtext NOT NULL,
+  <span class="sb">`</span>alter_time<span class="sb">`</span> TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY <span class="sb">`</span><span class="nb">id</span><span class="sb">`</span> <span class="o">(</span><span class="sb">`</span><span class="nb">id</span><span class="sb">`</span><span class="o">)</span>,
+  KEY <span class="sb">`</span>jid<span class="sb">`</span> <span class="o">(</span><span class="sb">`</span>jid<span class="sb">`</span><span class="o">)</span>,
+  KEY <span class="sb">`</span>fun<span class="sb">`</span> <span class="o">(</span><span class="sb">`</span>fun<span class="sb">`</span><span class="o">)</span>
+<span class="o">)</span> <span class="nv">ENGINE</span><span class="o">=</span>InnoDB DEFAULT <span class="nv">CHARSET</span><span class="o">=</span>utf8<span class="p">;</span>
+
+<span class="nt">--</span>
+<span class="nt">--</span> Table structure <span class="k">for </span>table <span class="sb">`</span>salt_events<span class="sb">`</span>
+<span class="nt">--</span>
+
+DROP TABLE IF EXISTS <span class="sb">`</span>salt_events<span class="sb">`</span><span class="p">;</span>
+CREATE TABLE <span class="sb">`</span>salt_events<span class="sb">`</span> <span class="o">(</span>
+<span class="sb">`</span><span class="nb">id</span><span class="sb">`</span> BIGINT NOT NULL AUTO_INCREMENT,
+<span class="sb">`</span>tag<span class="sb">`</span> varchar<span class="o">(</span>255<span class="o">)</span> NOT NULL,
+<span class="sb">`</span>data<span class="sb">`</span> mediumtext NOT NULL,
+<span class="sb">`</span>alter_time<span class="sb">`</span> TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+<span class="sb">`</span>master_id<span class="sb">`</span> varchar<span class="o">(</span>255<span class="o">)</span> NOT NULL,
+PRIMARY KEY <span class="o">(</span><span class="sb">`</span><span class="nb">id</span><span class="sb">`</span><span class="o">)</span>,
+KEY <span class="sb">`</span>tag<span class="sb">`</span> <span class="o">(</span><span class="sb">`</span>tag<span class="sb">`</span><span class="o">)</span>
+<span class="o">)</span> <span class="nv">ENGINE</span><span class="o">=</span>InnoDB DEFAULT <span class="nv">CHARSET</span><span class="o">=</span>utf8<span class="p">;</span>
+
+<span class="c"># 创建及配置用户权限</span>
+grant all on salt.<span class="k">*</span> to salt@<span class="s1">'%'</span> identified by <span class="s1">'salt@pw'</span><span class="p">;</span>
+flush privileges<span class="p">;</span>
+
+mysql <span class="nt">-h</span> 192.168.56.11 <span class="nt">-usalt</span> <span class="nt">-psalt</span>@pw
+
+</code></pre></div></div>
+<h1 id="3-修改-minion-配置文件">3 修改 Minion 配置文件</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 增加如下内容，支持 Returners MySQL:</span>
+mysql.host: <span class="s1">'192.168.56.11'</span>
+mysql.user: <span class="s1">'salt'</span>
+mysql.pass: <span class="s1">'salt@pw'</span>
+mysql.db: <span class="s1">'salt'</span>
+mysql.port: 3306
+
+<span class="c"># 修改配置文件需要重启 Minion</span>
+systemctl restart salt-minion
+</code></pre></div></div>
+<h1 id="4-检查-returners-mysql-结果">4 检查 Returners MySQL 结果</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@linux-node1 ~]# salt <span class="s1">'*'</span> test.ping <span class="nt">--return</span> mysql
+linux-node1.example.com:
+    True
+linux-node2.example.com:
+    True
+
+MariaDB <span class="o">[</span>salt]&gt; <span class="k">select</span> <span class="k">*</span> from salt.salt_returns<span class="se">\G</span>
+<span class="k">***************************</span> 1. row <span class="k">***************************</span>
+       fun: test.ping
+       jid: 20160629174902075344
+    <span class="k">return</span>: <span class="nb">true
+        id</span>: linux-node1.example.com
+   success: 1
+  full_ret: <span class="o">{</span><span class="s2">"fun_args"</span>: <span class="o">[]</span>, <span class="s2">"jid"</span>: <span class="s2">"20160629174902075344"</span>, <span class="s2">"return"</span>: <span class="nb">true</span>, <span class="s2">"retcode"</span>: 0, <span class="s2">"success"</span>: <span class="nb">true</span>, <span class="s2">"fun"</span>: <span class="s2">"test.ping"</span>, <span class="s2">"id"</span>: <span class="s2">"linux-node1.example.com"</span><span class="o">}</span>
+alter_time: 2016-06-29 17:49:02
+<span class="k">***************************</span> 2. row <span class="k">***************************</span>
+       fun: test.ping
+       jid: 20160629174902075344
+    <span class="k">return</span>: <span class="nb">true
+        id</span>: linux-node2.example.com
+   success: 1
+  full_ret: <span class="o">{</span><span class="s2">"fun_args"</span>: <span class="o">[]</span>, <span class="s2">"jid"</span>: <span class="s2">"20160629174902075344"</span>, <span class="s2">"return"</span>: <span class="nb">true</span>, <span class="s2">"retcode"</span>: 0, <span class="s2">"success"</span>: <span class="nb">true</span>, <span class="s2">"fun"</span>: <span class="s2">"test.ping"</span>, <span class="s2">"id"</span>: <span class="s2">"linux-node2.example.com"</span><span class="o">}</span>
+alter_time: 2016-06-29 17:49:02
+2 rows <span class="k">in </span><span class="nb">set</span> <span class="o">(</span>0.00 sec<span class="o">)</span>
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://docs.saltstack.com/en/latest/ref/returners/all/salt.returners.mysql.html">SALT.RETURNERS.MYSQL</a></p>
+
+:ET

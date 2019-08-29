@@ -1,0 +1,134 @@
+I"�<h1 id="1-安装-zabbix-java-gateway">1. 安装 Zabbix-Java-Gateway</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 阿里 Zabbix yum 源</span>
+rpm <span class="nt">-ivh</span> http://mirrors.aliyun.com/zabbix/zabbix/3.0/rhel/7/x86_64/zabbix-release-3.0-1.el7.noarch.rpm
+
+<span class="c"># 安装 java 环境</span>
+yum <span class="nb">install </span>java
+yum <span class="nb">install </span>zabbix-java-gateway
+
+</code></pre></div></div>
+
+<h1 id="2-配置-zabbix_java_gatewayconf">2. 配置 zabbix_java_gateway.conf</h1>
+
+<p>修改配置如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node2 ~]# egrep <span class="nt">-v</span> <span class="s1">'^#|^$'</span> /etc/zabbix/zabbix_java_gateway.conf 
+<span class="nv">LISTEN_IP</span><span class="o">=</span><span class="s2">"0.0.0.0"</span>
+<span class="nv">LISTEN_PORT</span><span class="o">=</span>10052
+<span class="nv">PID_FILE</span><span class="o">=</span><span class="s2">"/var/run/zabbix/zabbix_java.pid"</span>
+<span class="nv">START_POLLERS</span><span class="o">=</span>5
+<span class="nv">TIMEOUT</span><span class="o">=</span>3
+
+</code></pre></div></div>
+
+<h1 id="3-配置-zabbix_serverconf">3. 配置 zabbix_server.conf</h1>
+
+<p>修改配置如下(关注 Java 相关参数)：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# egrep <span class="nt">-v</span> <span class="s1">'^#|^$'</span> /etc/zabbix/zabbix_server.conf
+<span class="nv">LogFile</span><span class="o">=</span>/var/log/zabbix/zabbix_server.log
+<span class="nv">LogFileSize</span><span class="o">=</span>0
+<span class="nv">PidFile</span><span class="o">=</span>/var/run/zabbix/zabbix_server.pid
+<span class="nv">DBHost</span><span class="o">=</span>localhost
+<span class="nv">DBName</span><span class="o">=</span>zabbix
+<span class="nv">DBUser</span><span class="o">=</span>zabbix
+<span class="nv">DBPassword</span><span class="o">=</span>zabbix
+<span class="nv">JavaGateway</span><span class="o">=</span>192.168.56.12
+<span class="nv">JavaGatewayPort</span><span class="o">=</span>10052
+<span class="nv">StartJavaPollers</span><span class="o">=</span>5
+<span class="nv">SNMPTrapperFile</span><span class="o">=</span>/var/log/snmptrap/snmptrap.log
+<span class="nv">Timeout</span><span class="o">=</span>4
+<span class="nv">AlertScriptsPath</span><span class="o">=</span>/usr/lib/zabbix/alertscripts
+<span class="nv">ExternalScripts</span><span class="o">=</span>/usr/lib/zabbix/externalscripts
+<span class="nv">LogSlowQueries</span><span class="o">=</span>3000
+
+</code></pre></div></div>
+
+<h1 id="4-java-应用开启-jmx-协议">4. Java 应用开启 JMX 协议</h1>
+
+<h2 id="41-tomcat-开启-jmx-支持">4.1 Tomcat 开启 JMX 支持</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 1. 安装 java 环境</span>
+yum <span class="nb">install </span>java
+
+<span class="c"># 2. 安装 Tomcat</span>
+
+<span class="nb">cd</span> /usr/local/src/
+wget http://mirrors.tuna.tsinghua.edu.cn/apache/tomcat/tomcat-8/v8.0.36/bin/apache-tomcat-8.0.36.zip
+
+unzip apache-tomcat-8.0.36.zip 
+<span class="nb">mv </span>apache-tomcat-8.0.36 /usr/local/
+<span class="nb">ln</span> <span class="nt">-s</span> /usr/local/apache-tomcat-8.0.36 /usr/local/apache-tomcat
+
+<span class="c"># 3. Tomcat 配置 JMX 支持</span>
+
+<span class="c"># 修改 apache-tomcat/bin/catalina.sh</span>
+<span class="c"># 在 Execute The Requested Command 前加入如下代码（未采用认证加密方式）：</span>
+
+<span class="nv">CATALINA_OPTS</span><span class="o">=</span><span class="s2">"</span><span class="nv">$CATALINA_OPTS</span><span class="s2"> -Dcom.sun.management.jmxremote
+  -Dcom.sun.management.jmxremote.port=10053
+  -Dcom.sun.management.jmxremote.ssl=false
+  -Dcom.sun.management.jmxremote.authenticate=false
+  -Djava.rmi.server.hostname=192.168.56.12"</span>
+
+<span class="c"># 4. 启动或重启 Tomcat</span>
+
+<span class="nb">chmod</span> +x /usr/local/apache-tomcat/bin/<span class="k">*</span>.sh
+
+sh /usr/local/apache-tomcat/bin/shutdown.sh
+sh /usr/local/apache-tomcat/bin/startup.sh
+
+</code></pre></div></div>
+
+<h2 id="42-验证-jmx-连接">4.2 验证 JMX 连接</h2>
+
+<h3 id="421-在-windows-上通过-jconsole-验证">4.2.1 在 Windows 上通过 jconsole 验证</h3>
+
+<p>在 Windows 系统下安装 jdk 后，使用 jconsole 连接 192.168.56.12:10053，开启 JMX 成功后的结果截图如下：
+<img src="https://raw.githubusercontent.com/JaminZhang/jaminzhang.github.io/master/images/JMX-jconsole-summary.png" alt="JMX-jconsole-summary" /><br />
+<img src="https://raw.githubusercontent.com/JaminZhang/jaminzhang.github.io/master/images/JMX-jconsole-VM-summary.png" alt="JMX-jconsole-VM-summary" /></p>
+
+<h3 id="422-在-zabbix-server上通过-cmdline-jmxclient-验证">4.2.2 在 Zabbix Server上通过 cmdline-jmxclient 验证</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# java <span class="nt">-jar</span> cmdline-jmxclient-0.10.3.jar - 192.168.56.12:10053 java.lang:type<span class="o">=</span>Memory NonHeapMemoryUsage
+06/20/2016 12:05:20 +0800 org.archive.jmx.Client NonHeapMemoryUsage: 
+committed: 30015488
+init: 2555904
+max: <span class="nt">-1</span>
+used: 28761904
+
+</code></pre></div></div>
+
+<h1 id="5-zabbix-web-界面配置-jmx-监控-java-应用">5. Zabbix Web 界面配置 JMX 监控 Java 应用</h1>
+
+<p>这里我直接关联 Zabbix 自带的 JMX 通用模板（默认会有些 Key 显示 “Not supported”），<br />
+这需要根据实际情况进行修改配置，获取数据后生成的 Graph 如下所示
+<img src="https://raw.githubusercontent.com/JaminZhang/jaminzhang.github.io/master/images/JMX-Zabbix-Template-Items.png" alt="JMX-Zabbix-Template-Items" /></p>
+
+<p>当然也可以自己添加相应的 JMX key 和 item</p>
+
+<h1 id="配置过程中遇到的问题">配置过程中遇到的问题</h1>
+
+<h2 id="1-yum-安装的-tomcat-找不到-catalinash">1. yum 安装的 tomcat 找不到 catalina.sh</h2>
+
+<p>在 <code class="highlighter-rouge">/usr/sbin/tomcat</code> 文件开头添加 <code class="highlighter-rouge">CATALINA_OPTS</code> JMX 相关参数时并不生效，<br />
+解决方法：换成从官网下载 Apache Tomcat 8.0.36 软件包使用。</p>
+
+<h2 id="2-windows-10-jdk-180_91-没有-jconsole">2. Windows 10 jdk 1.8.0_91 没有 jconsole</h2>
+
+<p>在验证 JMX 连接时，需要使用 jconsole，但我在 Windows 10 系统下安装 jdk 1.8.0_91 后，竟然没有 jconsole？ 
+Windows 7 系统下安装是有 jconsole。Windows 10 下安装 jdk 1.7 后有 jconsole。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://wangzan18.blog.51cto.com/8021085/1692444">Zabbix 之通过 JMX 监控 Tomcat</a>  
+<a href="http://caisangzi.blog.51cto.com/6387416/1301682">Zabbix 监控之 JMX 协议</a><br />
+<a href="http://tomcat.apache.org/tomcat-8.0-doc/monitoring.html#Enabling_JMX_Remote">Enabling JMX Remote</a><br />
+<a href="http://it.nfsq.com.cn/index.php/2016/04/17/linux-tomcat8-jmx-monitor/">Linux Tomcat 8 配置 JMX 监控</a></p>
+
+:ET

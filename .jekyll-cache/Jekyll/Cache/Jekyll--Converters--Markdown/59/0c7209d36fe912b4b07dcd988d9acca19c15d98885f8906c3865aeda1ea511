@@ -1,0 +1,95 @@
+I"<h1 id="操作系统安装流程及初始化规范">操作系统安装流程及初始化规范</h1>
+
+<blockquote>
+  <p>V1.0</p>
+</blockquote>
+
+<h2 id="操作系统安装流程">操作系统安装流程</h2>
+
+<ol>
+  <li>服务器采购</li>
+  <li>服务器验收并设置 RAID</li>
+  <li>服务商提供验收单，运维验收负责人签字。</li>
+  <li>服务器上架</li>
+  <li>资产录入。</li>
+  <li>开始自动化安装。
+    <ol>
+      <li>将新服务器划入装机 VLAN</li>
+      <li>
+        <p>根据资产清单上的 MAC 地址，自定义安装。
+ 1.机房 2. 机房区域 3. 机柜  4. 服务器位置  5. 服务器网线接入端口  6. 该端口 MAC 地址    	
+ 7.profile ks.cfg 中指定操作系统 分区等、预分配的 IP 地址、主机名、子网、网关、DNS、角色等。</p>
+      </li>
+      <li>自动化装机平台，安装。
+ 例子：<br />
+ MAC: 00:50:56:35:46:6E<br />
+ IP: 192.168.56.118<br />
+ 掩码：255.255.255.0 <br />
+ 网关：192.168.56.2 <br />
+ 主机名：jaminzhang.github.io <br />
+ DNS：223.5.5.5 223.6.6.6</li>
+    </ol>
+
+    <p>根据 6.3 中的定制化安装配置如下 system:</p>
+  </li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	cobbler system add <span class="nt">--name</span><span class="o">=</span>jaminzhang.github.io <span class="nt">--mac</span><span class="o">=</span>00:50:56:35:46:6E <span class="nt">--profile</span><span class="o">=</span>CentOS-7-x86_64 <span class="nt">--ip-address</span><span class="o">=</span>192.168.56.118 <span class="nt">--subnet</span><span class="o">=</span>255.255.255.0 <span class="nt">--gateway</span><span class="o">=</span>192.168.56.2 <span class="se">\ </span> 
+<span class="nt">--interface</span><span class="o">=</span>eth0 <span class="nt">--static</span><span class="o">=</span>1 <span class="nt">--hostname</span><span class="o">=</span>jaminzhang.github.io <span class="nt">--name-servers</span><span class="o">=</span><span class="s2">"223.5.5.5 223.6.6.6"</span> <span class="nt">--kickstart</span><span class="o">=</span>/var/lib/cobbler/kickstarts/CentOS-7-x86_64.cfg
+</code></pre></div></div>
+
+<h2 id="操作系统安装规范">操作系统安装规范</h2>
+
+<ol>
+  <li>当前我公司使用操作系统为 CentOS 6 和 CentOS 7,均使用 x86_64 系统，需使用公司 Cobbler 进行自动化安装，禁止自定义设置。</li>
+  <li>版本选择，数据库统一使用 Cobbler 上 CentOS-7-DB 这个专用的 profile，其他 Web 应用统一使 用Cobbler 上CentOS-7-Web。</li>
+</ol>
+
+<h2 id="系统初始化规范">系统初始化规范</h2>
+
+<h3 id="初始化操作">初始化操作</h3>
+
+<ul>
+  <li>设置DNS  192.168.56.111 192.168.56.112</li>
+  <li>安装Zabbix Agent：  Zabbix Server:192.168.56.11</li>
+  <li>安装SaltStack Minion： Saltstack Master:192.168.56.11</li>
+  <li>histroy 记录时间
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">export </span><span class="nv">HISTTIMEFORMAT</span><span class="o">=</span><span class="s2">"%F %T </span><span class="sb">`</span><span class="nb">whoami</span><span class="sb">`</span><span class="s2">"</span>
+</code></pre></div>    </div>
+  </li>
+  <li>日志记录操作
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">export </span><span class="nv">PROMPT_COMMAND</span><span class="o">=</span><span class="s1">'{ msg=$(history 1 | { read x y; echo $y; });logger "[euid=$(whoami)]":$(who am i):[`pwd`]"$msg"; }'</span>
+</code></pre></div>    </div>
+  </li>
+  <li>内核参数优化</li>
+  <li>YUM 仓库</li>
+  <li>主机名解析</li>
+</ul>
+
+<h3 id="目录规范">目录规范</h3>
+
+<ul>
+  <li>脚本放置目录： /opt/shell</li>
+  <li>脚本日志目录： /opt/shell/log</li>
+  <li>脚本锁文件目录： /opt/shell/lock</li>
+</ul>
+
+<h3 id="服务安装规范">服务安装规范</h3>
+
+<ol>
+  <li>源码安装路径 /usr/local/appname.version</li>
+  <li>创建软连接 ln -s /usr/local/appname.version /usr/local/appname</li>
+</ol>
+
+<h3 id="主机名命名规范">主机名命名规范</h3>
+
+<p><strong>机房名称-项目-角色-服务-集群-节点.域名</strong></p>
+
+<p>例子：</p>
+
+<p>idc01-xxshop-api-nginx-bj-node1.shop.com</p>
+
+<h3 id="服务启动用户规范">服务启动用户规范</h3>
+
+<p>所有服务，统一使用 www 用户，uid 为 666，除负载均衡需要监听 80 端口使用 root 启动外，所有服务必须使用 www 用户启动，使用大于 1024 的端口。</p>
+:ET

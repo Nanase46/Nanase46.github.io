@@ -1,0 +1,101 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>昨天学习 Linux core 文件中谈到了使用 ulimit 命令来设置生成的 core 文件大小。<br />
+今天我们来复习下 ulimit 命令。</p>
+
+<h1 id="ulimit-简介">ulimit 简介</h1>
+
+<pre>
+
+Provides control over the resources available to the shell and to processes started by it, 
+on systems that allow such control.  
+The -H and -S options specify that the hard or soft limit is set for the given resource.  
+A hard limit cannot be increased by a non-root user once it is set; 
+a soft limit may be increased up to the value of the hard limit.  
+If neither -H nor -S is specified,  both the soft and hard limits are set.  
+The value of limit can be a number in the unit specified for the resource or 
+one of the special values hard, soft, or unlimited, which stand for the current hard limit, 
+the current soft limit, and no limit, respectively.  
+If limit is omitted, the current value of the soft limit of the resource is printed,  
+unless the -H option is given.  
+When more than one resource is specified, the limit name and unit are printed before the value.  
+
+</pre>
+
+<p>ulimit 在允许进行资源控制的系统上提供对 Shell 和它启动的进程的可用资源控制。</p>
+
+<pre>
+
+ulimit 用于限制 Shell 启动进程所占用的资源，支持以下各种类型的限制：
+所创建的内核文件的大小、进程数据块的大小、Shell 进程创建文件的大小、内存锁住的大小、常驻内存集的大小、
+打开文件描述符的数量、分配堆栈的最大大小、CPU 时间、单个用户的最大线程数、Shell 进程所能使用的最大虚拟内存。
+同时，它支持硬资源和软资源的限制。
+作为临时限制，ulimit 可以作用于通过使用其命令登录的 Shell 会话，在会话终止时便结束限制，
+并不影响于其他 Shell 会话。
+而对于长期的固定限制，ulimit 命令语句又可以被添加到由登录 Shell 读取的文件中，作用于特定的 Shell 用户。
+
+</pre>
+
+<h1 id="ulimit-参数">ulimit 参数</h1>
+
+<p>man ulimit</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nt">-a</span>     All current limits are reported
+<span class="nt">-b</span>     The maximum socket buffer size
+<span class="nt">-c</span>     The maximum size of core files created
+<span class="nt">-d</span>     The maximum size of a process<span class="s1">'s data segment
+-e     The maximum scheduling priority ("nice")
+-f     The maximum size of files written by the shell and its children
+-i     The maximum number of pending signals
+-l     The maximum size that may be locked into memory
+-m     The maximum resident set size (many systems do not honor this limit)
+-n     The maximum number of open file descriptors (most systems do not allow this value to be set)
+-p     The pipe size in 512-byte blocks (this may not be set)
+-q     The maximum number of bytes in POSIX message queues
+-r     The maximum real-time scheduling priority
+-s     The maximum stack size
+-t     The maximum amount of cpu time in seconds
+-u     The maximum number of processes available to a single user
+-v     The maximum amount of virtual memory available to the shell and, on some systems, to its children
+-x     The maximum number of file locks
+-T     The maximum number of threads
+
+</span></code></pre></div></div>
+
+<h1 id="ulimit-的使用方式">ulimit 的使用方式</h1>
+
+<h2 id="1-在用户的启动脚本中">1. 在用户的启动脚本中</h2>
+
+<pre>
+
+如果用户使用的是 bash，就可以在用户的目录下的 .bashrc 文件中，加入`ulimit -u 64`，来限制用户最多可以使用 64 个进程。
+此外，可以在与 .bashrc 功能相当的启动脚本中加入 ulimit。
+
+</pre>
+
+<h2 id="2-在应用程序的启动脚本中">2. 在应用程序的启动脚本中</h2>
+
+<p>如果用户要对某个应用程序 myapp 进行限制，可以写一个简单的脚本 startmyapp。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nb">ulimit</span> <span class="nt">-s</span> 512 
+myapp
+
+</code></pre></div></div>
+
+<p>以后只要通过脚本 startmyapp 来启动应用程序，就可以限制应用程序 myapp 的线程栈大小为 512K。</p>
+
+<h2 id="3-直接在控制台输入">3. 直接在控制台输入</h2>
+
+<p>这个就是直接在 Shell 中输入 ulimit 命令了。</p>
+
+<h1 id="针对用户进行资源限制---etcsecuritylimitsconf">针对用户进行资源限制 - <code class="highlighter-rouge">/etc/security/limits.conf</code></h1>
+<p>具体配置请查看此配置文件，写得比较清楚了。</p>
+
+<p>更多实例讲解请参考<a href="http://www.ibm.com/developerworks/cn/linux/l-cn-ulimit/">通过 ulimit 改善系统性能</a>，这篇写得不错，推荐看看。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://www.ibm.com/developerworks/cn/linux/l-cn-ulimit/">通过 ulimit 改善系统性能</a><br />
+<a href="http://www.linuxso.com/command/ulimit.html">Linux ulimit命令参数及用法详解</a></p>
+:ET

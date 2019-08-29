@@ -1,0 +1,120 @@
+I"�<h1 id="zabbix-中监控-mysql-方式">Zabbix 中监控 MySQL 方式</h1>
+
+<h2 id="1-使用自带模板监控-mysql">1. 使用自带模板监控 MySQL</h2>
+
+<p>Zabbix-Agent 本身并没有提供直接对 MySQL 监控的 Key，所以首先需要通过自定义 Key 来应用自带的 MySQL 模板。</p>
+
+<p>具体步骤暂不说明。本文主要说明使用 Percona Monitoring Plugins 监控 MySQL 的方式。</p>
+
+<h2 id="2-使用-percona-monitoring-plugins-监控-mysql">2. 使用 Percona Monitoring Plugins 监控 MySQL</h2>
+
+<h1 id="使用-percona-monitoring-plugins-监控-mysql">使用 Percona Monitoring Plugins 监控 MySQL</h1>
+
+<h2 id="1-系统需求">1. 系统需求</h2>
+
+<p>被监控服务器上安装 zabbix-agent, php, php-mysql</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# yum <span class="nb">install </span>zabbix-agent php php-mysql
+<span class="o">[</span>root@linux-node1 ~]# rpm <span class="nt">-qa</span> zabbix-agent php php-mysql
+php-mysql-5.4.16-36.1.el7_2.1.x86_64
+php-5.4.16-36.1.el7_2.1.x86_64
+zabbix-agent-3.0.3-1.el7.x86_64
+
+</code></pre></div></div>
+
+<h2 id="2-安装配置-percona-zabbix-templates">2. 安装配置 percona-zabbix-templates</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 安装 percona-zabbix-templates</span>
+yum <span class="nb">install </span>https://www.percona.com/downloads/percona-monitoring-plugins/1.1.6/percona-zabbix-templates-1.1.6-1.noarch.rpm
+<span class="c"># 也可配置 Percona yum 仓库后安装 </span>
+<span class="c"># yum install https://www.percona.com/redir/downloads/percona-release/redhat/latest/percona-release-0.1-3.noarch.rpm</span>
+ 
+<span class="c"># 配置 Zabbix Agent</span>
+<span class="nb">cp</span> /var/lib/zabbix/percona/templates/userparameter_percona_mysql.conf /etc/zabbix/zabbix_agentd.d/
+
+systemctl restart zabbix-agent
+
+</code></pre></div></div>
+
+<h2 id="3-配置-agent-上的-mysql-连接">3. 配置 Agent 上的 MySQL 连接</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 创建 .cnf 文件指定 MySQL 用户名和密码</span>
+
+<span class="c"># 生产环境请一定要设置复杂密码</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cat</span> /var/lib/zabbix/percona/scripts/ss_get_mysql_stats.php.cnf
+&lt;?php
+<span class="nv">$mysql_user</span> <span class="o">=</span> <span class="s1">'zabbix'</span><span class="p">;</span>
+<span class="nv">$mysql_pass</span> <span class="o">=</span> <span class="s1">'zabbix'</span><span class="p">;</span>
+
+<span class="c"># 测试脚本</span>
+<span class="o">[</span>root@linux-node1 ~]# /var/lib/zabbix/percona/scripts/get_mysql_stats_wrapper.sh gg
+
+<span class="c"># 配置 ~zabbix/.my.cnf，内容如下：</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cat</span> ~zabbix/.my.cnf
+<span class="o">[</span>client]
+user <span class="o">=</span> zabbix
+password <span class="o">=</span> zabbix
+
+<span class="c"># zabbix 用户测试脚本</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">sudo</span> <span class="nt">-u</span> zabbix <span class="nt">-H</span> /var/lib/zabbix/percona/scripts/get_mysql_stats_wrapper.sh running-slave
+0
+
+</code></pre></div></div>
+
+<h2 id="4-配置-zabbix-server">4. 配置 Zabbix Server</h2>
+
+<ol>
+  <li>去 https://www.percona.com/downloads/percona-monitoring-plugins/ 下载 Percona Monitoring Plugins 最新 tar.gz 源码包<br />
+  （如果使用 Zabbix 3.0，自带模板有点旧了，并不能导入使用，后面给出解决办法）</li>
+  <li>解压获取 <code class="highlighter-rouge">zabbix/templates/</code> 目录</li>
+  <li>通过 Zabbix Web 界面  (Configuration -&gt; Templates -&gt; Import) 导入 XML 模板，注意要另外选择上 Screens.</li>
+  <li>配置主机关联上 Percona MySQL Server Template 模板。</li>
+</ol>
+
+<h1 id="遇到的问题">遇到的问题</h1>
+
+<ol>
+  <li>如果使用 Zabbix 3.0，自带模板比较旧，并不能导入使用<br />
+提示如下：<br />
+`
+Invalid tag “/zabbix_export/date”: “YYYY-MM-DDThh:mm:ssZ” is expected.<br />
+Invalid tag “/zabbix_export/templates/template(1)/items/item(1)”: the tag “snmp_community” is missing.<br />
+`</li>
+</ol>
+
+<p>解决方法：
+手动修改模板文件解决报错比较麻烦，有人提到可以将此模板导入 Zabbix 2.X 系列后，再导出到 Zabbix 3.0。<br />
+这里我们直接使用现成可用的 Zabbix 3.X 的 percona-zabbix-templates <br />
+<a href="http://jaminzhang.github.io/soft-conf/Zabbix/zbx_percona_mysql_template.xml">zbx_percona_mysql_template.xml 模板地址</a></p>
+
+<ol>
+  <li>不出图</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># zabbix_get 能获取数据，但是不出图。</span>
+<span class="o">[</span>root@linux-node1 ~]# zabbix_get <span class="nt">-s</span> 192.168.56.11 <span class="nt">-k</span> <span class="s2">"MySQL.max-connections"</span>
+151
+
+<span class="c"># 查看状态文件权限，为之前测试脚本时的 root 权限，zabbix 用户并不能读写，所以获取不到数据</span>
+<span class="o">[</span>root@linux-node1 ~]# ll /tmp/localhost-mysql_cacti_stats.txt 
+<span class="nt">-rw-r--r--</span> 1 root root 1374 Jun 22 11:33 /tmp/localhost-mysql_cacti_stats.txt
+
+<span class="c"># 删除 root 用户测试时生成的 mysql 状态文件</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">rm</span> <span class="nt">-f</span>  /tmp/localhost-mysql_cacti_stats.txt 
+<span class="c"># 会自动生成 zabbix 用户权限的 mysql 状态文件</span>
+<span class="o">[</span>root@linux-node1 ~]# ll  /tmp/localhost-mysql_cacti_stats.txt 
+<span class="nt">-rw-rw-r--</span> 1 zabbix zabbix 1374 Jun 22 11:41 /tmp/localhost-mysql_cacti_stats.txt
+<span class="c"># 过一会儿就可以看到出图了</span>
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.percona.com/doc/percona-monitoring-plugins/1.1/zabbix/index.html">Percona Monitoring Plugins for Zabbix</a><br />
+<a href="https://www.percona.com/forums/questions-discussions/percona-monitoring-plugins/43888-the-tag-snmp_community-is-missing">the tag “snmp_community” is missing.</a><br />
+<a href="http://sysblog.sund.org/zabbix-and-percona/">ZABBIX AND PERCONA</a></p>
+
+:ET

@@ -1,0 +1,37 @@
+I"C<h1 id="引言">引言</h1>
+
+<p>我们一般使用 ping 和 traceroute 来诊断网络连接的延迟和丢包问题。<br />
+之前简单看过 MTR，今年来重新学习下。</p>
+
+<h1 id="什么是-mtr">什么是 MTR</h1>
+
+<pre>
+
+mtr - a network diagnostic tool
+
+mtr combines the functionality of the traceroute and ping programs in a single network diagnostic tool.
+
+As mtr starts, it investigates the network connection between the host mtr runs on and HOSTNAME.
+by sending packets with purposely low TTLs. 
+It continues to send packets with low TTL, noting the response time of the intervening routers.  
+This allows mtr to print the response percentage and response times of the internet route to HOSTNAME.  
+A sudden increase in packet loss or response time is often an indication of a bad (or simply overloaded) link.
+
+The results are usually reported as round-trip-response times in miliseconds and the percentage of packetloss.
+
+</pre>
+
+<p>MTR 是一个网络诊断工具。<br />
+MTR 在一个单一的网络诊断工具中结合了 traceroute 和 ping 程序的功能。</p>
+
+<h1 id="分析-mtr-报告">分析 MTR 报告</h1>
+
+<p>得推荐这篇讲解 MTR 的文章，很不错，里面有分析报告的实例说明。
+<a href="https://meiriyitie.com/2015/05/26/diagnosing-network-issues-with-mtr">使用 MTR 诊断网络问题</a></p>
+
+<h1 id="ref">Ref</h1>
+<p>man mtr<br />
+<a href="https://meiriyitie.com/2015/05/26/diagnosing-network-issues-with-mtr">使用 MTR 诊断网络问题</a> <br />
+<a href="http://blog.hexu.org/archives/1050.shtml">mtr 命令详解 / 举例说明</a></p>
+
+:ET

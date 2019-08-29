@@ -1,0 +1,142 @@
+I"�<p>ELK 快速安装</p>
+
+<h1 id="elk-简介">ELK 简介</h1>
+
+<pre>
+
+对于日志来说，最常见的需求就是收集、存储、查询、展示，
+开源社区正好有相对应的开源项目：Logstash（收集）、Elasticsearch（存储 + 搜索）、Kibana（展示），
+我们将这三个组合起来的技术称之为 ELKStack，
+所以说 ELKStack 指的是 Elasticsearch、Logstash、Kibana 技术栈的结合。
+
+</pre>
+
+<p>20170317：</p>
+
+<p>今天更新下这篇文章，现在 ELK 官网将 ELKStack 官方称为 Elastic Stack，而且最新系列版本为 5.2。   
+关于 Elastic Stack 的快速安装最新文档请参考官网的安装文档<a href="https://www.elastic.co/guide/en/elastic-stack/current/installing-elastic-stack.html">Installing the Elastic Stack</a>，总结得比较完整。</p>
+
+<h1 id="安装-elasticsearch">安装 Elasticsearch</h1>
+
+<pre>
+
+Elasticsearch 首先需要 Java 环境，所以需要提前安装好 JDK，可以直接使用 yum 安装。
+也可以从 Oracle 官网下载 JDK 进行安装。开始之前要确保 JDK 正常安装并且环境变量也配置正确。
+
+</pre>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 0. 安装 JDK</span>
+
+<span class="o">[</span>root@linux-node1 ~]# yum <span class="nb">install </span>java
+<span class="o">[</span>root@linux-node1 ~]# java <span class="nt">-version</span>
+openjdk version <span class="s2">"1.8.0_101"</span>
+OpenJDK Runtime Environment <span class="o">(</span>build 1.8.0_101-b13<span class="o">)</span>
+OpenJDK 64-Bit Server VM <span class="o">(</span>build 25.101-b13, mixed mode<span class="o">)</span>
+
+<span class="c"># 1. 下载安装 GPG Key</span>
+
+rpm <span class="nt">--import</span> https://packages.elastic.co/GPG-KEY-elasticsearch
+
+<span class="c"># 2. 配置 yum 仓库</span>
+
+vim /etc/yum.repos.d/elasticsearch.repo
+<span class="o">[</span>elasticsearch-2.x]
+<span class="nv">name</span><span class="o">=</span>Elasticsearch repository <span class="k">for </span>2.x packages
+<span class="nv">baseurl</span><span class="o">=</span>https://packages.elastic.co/elasticsearch/2.x/centos
+<span class="nv">gpgcheck</span><span class="o">=</span>1
+<span class="nv">gpgkey</span><span class="o">=</span>https://packages.elastic.co/GPG-KEY-elasticsearch
+<span class="nv">enabled</span><span class="o">=</span>1
+
+<span class="c"># 3. 安装</span>
+
+yum <span class="nb">install </span>elasticsearch <span class="nt">-y</span>
+
+</code></pre></div></div>
+
+<h1 id="安装-logstash">安装 Logstash</h1>
+
+<p>和 Elasticsearch 一样，在开始部署 Logstash 之前也需要你的环境中正确的安装的 JDK。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 0. 安装 JDK</span>
+
+<span class="o">[</span>root@linux-node1 ~]# yum <span class="nb">install </span>java
+<span class="o">[</span>root@linux-node1 ~]# java <span class="nt">-version</span>
+openjdk version <span class="s2">"1.8.0_101"</span>
+OpenJDK Runtime Environment <span class="o">(</span>build 1.8.0_101-b13<span class="o">)</span>
+OpenJDK 64-Bit Server VM <span class="o">(</span>build 25.101-b13, mixed mode<span class="o">)</span>
+
+<span class="c"># 1. 下载安装 GPG Key</span>
+
+rpm <span class="nt">--import</span> https://packages.elastic.co/GPG-KEY-elasticsearch
+
+<span class="c"># 2. 配置 yum 仓库</span>
+
+vim /etc/yum.repos.d/logstash.repo
+<span class="o">[</span>logstash-2.3]
+<span class="nv">name</span><span class="o">=</span>Logstash repository <span class="k">for </span>2.3.x packages
+<span class="nv">baseurl</span><span class="o">=</span>https://packages.elastic.co/logstash/2.3/centos
+<span class="nv">gpgcheck</span><span class="o">=</span>1
+<span class="nv">gpgkey</span><span class="o">=</span>https://packages.elastic.co/GPG-KEY-elasticsearch
+<span class="nv">enabled</span><span class="o">=</span>1
+
+<span class="c"># 3. 安装</span>
+
+yum <span class="nb">install </span>logstash <span class="nt">-y</span>
+
+</code></pre></div></div>
+
+<h1 id="安装-kibana">安装 Kibana</h1>
+
+<p>Kibana 是为 Elasticsearch 设计的开源分析和可视化平台。
+你可以使用 Kibana 来搜索，查看存储在 Elasticsearch 索引中的数据并与之交互。
+你可以很容易实现高级的数据分析和可视化，以图表的形式展现出来。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 1. 下载安装 GPG Key</span>
+
+rpm <span class="nt">--import</span> https://packages.elastic.co/GPG-KEY-elasticsearch
+
+<span class="c"># 2. 配置 yum 仓库</span>
+
+vim /etc/yum.repos.d/kibana.repo
+<span class="o">[</span>kibana-4.5]
+<span class="nv">name</span><span class="o">=</span>Kibana repository <span class="k">for </span>4.5.x packages
+<span class="nv">baseurl</span><span class="o">=</span>http://packages.elastic.co/kibana/4.5/centos
+<span class="nv">gpgcheck</span><span class="o">=</span>1
+<span class="nv">gpgkey</span><span class="o">=</span>http://packages.elastic.co/GPG-KEY-elasticsearch
+<span class="nv">enabled</span><span class="o">=</span>1
+
+<span class="c"># 3. 安装</span>
+
+yum <span class="nb">install </span>kibana <span class="nt">-y</span>
+
+</code></pre></div></div>
+
+<blockquote>
+
+  <p>小技巧：yum install *.rpm 会验证依赖。
+当 yum 下载安装软件包比较慢时，可以用其他快速下载工具下载对应的软件包，然后再安装。</p>
+</blockquote>
+
+<h1 id="使用-cobbler-创建-elkstack-仓库">使用 Cobbler 创建 ELKStack 仓库</h1>
+
+<p>生产环境一般不能使用外网的 YUM 仓库，可以使用 Cobbler 来创建自己的 yum 仓库。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# cobbler repo add <span class="nt">--name</span><span class="o">=</span>elasticsearch-2.x <span class="nt">--mirror</span><span class="o">=</span>https://packages.elastic.co/elasticsearch/2.x/centos <span class="nt">--arch</span><span class="o">=</span>x86_64 <span class="nt">--breed</span><span class="o">=</span>yum
+<span class="o">[</span>root@linux-node1 ~]# cobbler repo add <span class="nt">--name</span><span class="o">=</span>logstash-2.3 <span class="nt">--mirror</span><span class="o">=</span>https://packages.elastic.co/logstash/2.3/centos <span class="nt">--arch</span><span class="o">=</span>x86_64 <span class="nt">--breed</span><span class="o">=</span>yum
+<span class="o">[</span>root@linux-node1 ~]# cobbler repo add <span class="nt">--name</span><span class="o">=</span>kibana-4.5 <span class="nt">--mirror</span><span class="o">=</span>http://packages.elastic.co/kibana/4.5/centos <span class="nt">--arch</span><span class="o">=</span>x86_64 <span class="nt">--breed</span><span class="o">=</span>yum
+<span class="o">[</span>root@linux-node1 ~]# cobbler reposync
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.elastic.co/guide/en/elastic-stack/current/installing-elastic-stack.html">Installing the Elastic Stack</a><br />
+<a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-repositories.html">Elasticsearch Repositories</a><br />
+<a href="https://www.elastic.co/guide/en/logstash/current/installing-logstash.html">Installing Logstash</a><br />
+<a href="https://www.elastic.co/guide/en/kibana/current/_upgrading_kibana.html">Kibana Repositories</a><br />
+<a href="https://www.unixhot.com/article/59">ELKStack 快速安装</a></p>
+
+:ET

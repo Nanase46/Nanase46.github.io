@@ -1,0 +1,60 @@
+I"�	<h1 id="dns-服务器压测工具-queryperf">DNS 服务器压测工具 queryperf</h1>
+
+<h1 id="安装-queryperf">安装 queryperf</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> /usr/local/src
+wget http://ftp.isc.org/isc/bind9/9.7.3/bind-9.7.3.tar.gz
+<span class="nb">tar </span>xf bind-9.7.3.tar.gz
+<span class="nb">cd</span> /usr/local/src/bind-9.7.3/contrib/queryperf
+./configure
+make
+<span class="nb">cp </span>queryperf /usr/bin/
+</code></pre></div></div>
+
+<h1 id="使用-queryperf">使用 queryperf</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 将需要压测的 DNS 资源记录放置在一个文件中</span>
+<span class="o">[</span>root@ns-master queryperf]# <span class="nb">cat </span>test.txt 
+view.viewexample.com A
+
+<span class="c"># 使用 queryperf 测试及结果查看，主要关注 QPS</span>
+<span class="o">[</span>root@ns-master queryperf]# queryperf <span class="nt">-d</span> test.txt <span class="nt">-s</span> 192.168.56.13
+
+DNS Query Performance Testing Tool
+Version: <span class="nv">$Id</span>: queryperf.c,v 1.12 2007-09-05 07:36:04 marka Exp <span class="err">$</span>
+
+<span class="o">[</span>Status] Processing input data
+<span class="o">[</span>Status] Sending queries <span class="o">(</span>beginning with 192.168.56.13<span class="o">)</span>
+<span class="o">[</span>Status] Testing <span class="nb">complete
+
+</span>Statistics:
+
+  Parse input file:     once
+  Ended due to:         reaching end of file
+
+  Queries sent:         1 queries
+  Queries completed:    1 queries
+  Queries lost:         0 queries
+  Queries delayed<span class="o">(</span>?<span class="o">)</span>:   0 queries
+
+  RTT max:         	0.000011 sec
+  RTT min:              0.000011 sec
+  RTT average:          0.000011 sec
+  RTT std deviation:    0.000039 sec
+  RTT out of range:     0 queries
+
+  Percentage completed: 100.00%
+  Percentage lost:        0.00%
+
+  Started at:           Sat Jul  9 04:21:57 2016
+  Finished at:          Sat Jul  9 04:21:57 2016
+  Ran <span class="k">for</span>:              0.000047 seconds
+
+  Queries per second:   21276.595745 qps
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://wubinary.blog.51cto.com/8570032/1379595">DNS服务器(五)：使用queryperf对DNS服务器作压力测试</a><br />
+<a href="http://sw5720.blog.51cto.com/8812314/1614087">使用queryperf对DNS服务器作压力测试</a></p>
+
+:ET

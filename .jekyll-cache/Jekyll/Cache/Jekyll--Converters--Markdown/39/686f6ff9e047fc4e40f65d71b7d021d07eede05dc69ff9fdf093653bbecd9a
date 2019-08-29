@@ -1,0 +1,130 @@
+I"c%<p>Docker 网络访问</p>
+
+<p>Docker 允许通过外部访问容器或容器互联的方式来提供网络服务。</p>
+
+<h1 id="外部访问容器">外部访问容器</h1>
+
+<p>容器中可以运行一些网络应用，要让外部也可以访问这些应用。
+默认 Docker 会创建一个桥接的网卡 docker0，然后提供了两种网络端口映射方法：</p>
+
+<ul>
+  <li>随机端口映射 -P 参数</li>
+  <li>指定端口映射 -p 参数</li>
+</ul>
+
+<h2 id="随机端口映射">随机端口映射</h2>
+
+<p>当使用 -P 参数时，Docker 会随机映射一个端口到内部容器开放的网络端口。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 运行一个守护态的 nginx 容器，使用随机端口映射</span>
+
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">-d</span> <span class="nt">-P</span> nginx
+7236cf1a985aff380272cef71683413768738217831b7434cc8829632f4a144b
+
+<span class="o">[</span>root@linux-node1 ~]# docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                           NAMES
+7236cf1a985a        nginx               <span class="s2">"nginx -g 'daemon off"</span>   10 seconds ago      Up 9 seconds        0.0.0.0:32773-&gt;80/tcp, 0.0.0.0:32772-&gt;443/tcp   adoring_poincare
+
+<span class="c"># 从上面可以看到，本地主机的 32773 端口映射到了容器的 80 端口，32772 端口映射到了容器的 443 端口</span>
+<span class="c"># 我们可以通过本地主机的端口来访问对应容器内的应用</span>
+
+<span class="c"># 查看本地主机监听端口</span>
+
+<span class="o">[</span>root@linux-node1 ~]# netstat <span class="nt">-lntp</span>
+Active Internet connections <span class="o">(</span>only servers<span class="o">)</span>
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 0.0.0.0:22              0.0.0.0:<span class="k">*</span>               LISTEN      2240/sshd           
+tcp        0      0 127.0.0.1:25            0.0.0.0:<span class="k">*</span>               LISTEN      2335/master         
+tcp6       0      0 :::32772                :::<span class="k">*</span>                    LISTEN      49792/docker-proxy  
+tcp6       0      0 :::32773                :::<span class="k">*</span>                    LISTEN      49799/docker-proxy  
+
+<span class="c"># 查看 iptables 中 docker 对应的 NAT</span>
+
+<span class="o">[</span>root@linux-node1 ~]# iptables <span class="nt">-t</span> nat <span class="nt">-vnL</span>
+Chain PREROUTING <span class="o">(</span>policy ACCEPT 2 packets, 130 bytes<span class="o">)</span>
+ pkts bytes target     prot opt <span class="k">in     </span>out     <span class="nb">source               </span>destination         
+  117  6012 DOCKER     all  <span class="nt">--</span>  <span class="k">*</span>      <span class="k">*</span>       0.0.0.0/0            0.0.0.0/0            ADDRTYPE match dst-type LOCAL
+
+Chain INPUT <span class="o">(</span>policy ACCEPT 2 packets, 130 bytes<span class="o">)</span>
+ pkts bytes target     prot opt <span class="k">in     </span>out     <span class="nb">source               </span>destination         
+
+Chain OUTPUT <span class="o">(</span>policy ACCEPT 1 packets, 71 bytes<span class="o">)</span>
+ pkts bytes target     prot opt <span class="k">in     </span>out     <span class="nb">source               </span>destination         
+    0     0 DOCKER     all  <span class="nt">--</span>  <span class="k">*</span>      <span class="k">*</span>       0.0.0.0/0           <span class="o">!</span>127.0.0.0/8          ADDRTYPE match dst-type LOCAL
+
+Chain POSTROUTING <span class="o">(</span>policy ACCEPT 3 packets, 175 bytes<span class="o">)</span>
+ pkts bytes target     prot opt <span class="k">in     </span>out     <span class="nb">source               </span>destination         
+   62  3836 MASQUERADE  all  <span class="nt">--</span>  <span class="k">*</span>      <span class="o">!</span>docker0  172.17.0.0/16        0.0.0.0/0           
+    0     0 MASQUERADE  tcp  <span class="nt">--</span>  <span class="k">*</span>      <span class="k">*</span>       172.17.0.2           172.17.0.2           tcp dpt:443
+    0     0 MASQUERADE  tcp  <span class="nt">--</span>  <span class="k">*</span>      <span class="k">*</span>       172.17.0.2           172.17.0.2           tcp dpt:80
+
+Chain DOCKER <span class="o">(</span>2 references<span class="o">)</span>
+ pkts bytes target     prot opt <span class="k">in     </span>out     <span class="nb">source               </span>destination         
+    0     0 RETURN     all  <span class="nt">--</span>  docker0 <span class="k">*</span>       0.0.0.0/0            0.0.0.0/0           
+    0     0 DNAT       tcp  <span class="nt">--</span>  <span class="o">!</span>docker0 <span class="k">*</span>       0.0.0.0/0            0.0.0.0/0            tcp dpt:32772 to:172.17.0.2:443
+    2   104 DNAT       tcp  <span class="nt">--</span>  <span class="o">!</span>docker0 <span class="k">*</span>       0.0.0.0/0            0.0.0.0/0            tcp dpt:32773 to:172.17.0.2:80
+
+<span class="c"># 进入 nginx 容器查看 IP 地址</span>
+
+root@7236cf1a985a:/# ip ad li
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default 
+    <span class="nb">link</span>/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+46: eth0@if47: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP group default 
+    <span class="nb">link</span>/ether 02:42:ac:11:00:02 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.2/16 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:acff:fe11:2/64 scope <span class="nb">link 
+       </span>valid_lft forever preferred_lft forever
+
+<span class="c"># 通过 docker logs 查看 nginx 容器的日志</span>
+
+<span class="o">[</span>root@linux-node1 ~]# docker logs <span class="nt">-f</span> 7236cf1a985a
+192.168.56.1 - - <span class="o">[</span>18/Sep/2016:11:40:18 +0000] <span class="s2">"GET / HTTP/1.1"</span> 200 612 <span class="s2">"-"</span> <span class="s2">"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36"</span> <span class="s2">"-"</span>
+192.168.56.1 - - <span class="o">[</span>18/Sep/2016:11:40:18 +0000] <span class="s2">"GET /favicon.ico HTTP/1.1"</span> 404 571 <span class="s2">"http://192.168.56.11:32773/"</span> <span class="s2">"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36"</span> <span class="s2">"-"</span>
+2016/09/18 11:40:18 <span class="o">[</span>error] 6#6: <span class="k">*</span>1 open<span class="o">()</span> <span class="s2">"/usr/share/nginx/html/favicon.ico"</span> failed <span class="o">(</span>2: No such file or directory<span class="o">)</span>, client: 192.168.56.1, server: localhost, request: <span class="s2">"GET /favicon.ico HTTP/1.1"</span>, host: <span class="s2">"192.168.56.11:32773"</span>, referrer: <span class="s2">"http://192.168.56.11:32773/"</span>
+
+</code></pre></div></div>
+
+<p>随机端口映射可用于测试环境，这样端口没有冲突。</p>
+
+<h2 id="指定端口映射">指定端口映射</h2>
+
+<p>-p（小写的）则可以指定要映射的端口，并且，在一个指定端口上只可以绑定一个容器。<br />
+支持的格式有 <code class="highlighter-rouge">ip:hostPort:containerPort | ip::containerPort | hostPort:containerPort</code>。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 运行一个 nginx 容器，指定本地主机上的 80 端口映射到容器的 80 端口</span>
+
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">-d</span> <span class="nt">-p</span> 192.168.56.11:80:80 <span class="nt">--name</span> mynginx nginx
+420066be5a1dce1c19b3c8329177bd320c2657d58559b739a18241602f70d250
+<span class="o">[</span>root@linux-node1 ~]# docker ps <span class="nt">-l</span>
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                               NAMES
+420066be5a1d        nginx               <span class="s2">"nginx -g 'daemon off"</span>   2 minutes ago       Up 2 minutes        192.168.56.11:80-&gt;80/tcp, 443/tcp   mynginx
+
+<span class="c"># 使用 docker port 直接查看端口映射情况</span>
+
+<span class="o">[</span>root@linux-node1 ~]# docker port mynginx
+80/tcp -&gt; 192.168.56.11:80
+
+<span class="c"># -p 参数可以有多个，示例如下：</span>
+
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">-d</span> <span class="nt">-p</span> 82:80 <span class="nt">-p</span> 443:443 <span class="nt">--name</span> nginxv2 nginx
+30fd50542bb541799c688e113f15d0094791822ea2d0370fd1cd86354501f842
+<span class="o">[</span>root@linux-node1 ~]# docker port nginxv2
+80/tcp -&gt; 0.0.0.0:82
+443/tcp -&gt; 0.0.0.0:443
+
+</code></pre></div></div>
+<blockquote>
+
+  <p>Docker 的网络端口映射是用 NAT 实现，会影响网络性能，在生产环境需要注意。</p>
+</blockquote>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://yeasy.gitbooks.io/docker_practice/content/network/port_mapping.html">外部访问容器</a></p>
+:ET

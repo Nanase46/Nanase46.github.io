@@ -1,0 +1,40 @@
+I"�<h1 id="引言">引言</h1>
+<p>今天一个要写一个 Shell 脚本，其中要判断 2 个字符串是否相等，<br />
+当时在这里犹豫了下，应该是使用 =或!=（用于字符串比较），和 eq/ne（用于算术比较）搞混了，这里有必要记录下。<br />
+学习就是不断地重复，不断地加深理解。</p>
+
+<h1 id="shell-脚本中的比较条件测试操作符">Shell 脚本中的比较条件测试操作符</h1>
+
+<pre>
+
+Arithmetic Comparison	 	
+-eq	Equal to	 			
+-ne	Not equal to	 		
+-lt	Less than	 			
+-le	Less than or equal to	
+-gt	Greater than	 		
+-ge	Greater than or equal to
+
+String Comparison	 
+=	Equal to
+==	Equal to
+!=	Not equal to
+\&lt;	Less than (ASCII) *
+\&gt;	Greater than (ASCII) *
+* If within a double-bracket [[ ... ]] test construct, then no escape \ is needed.
+ 
+-z	String is empty
+-n	String is not empty
+
+Arithmetic Comparison	within double parentheses (( ... ))	 	 	 
+&gt;	Greater than	 	 	 
+&gt;=	Greater than or equal to	 	 	 
+&lt;	Less than	 	 	 
+&lt;=	Less than or equal to	 	 	 
+
+</pre>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://www.tldp.org/LDP/abs/html/refcards.html">ABS Table B-2. TEST Operators: Binary Comparison</a><br />
+<a href="http://linglong2110.iteye.com/blog/1058021">Shell 字符串比较</a></p>
+:ET

@@ -1,0 +1,12 @@
+I"0<h1 id="引言">引言</h1>
+
+<p>由于某些原因，国内网络访问 Docker Hub 拉取官方 Docker 镜像时经常超时。<br />
+怎么解决呢？可以使用 HTTP 代理来加速访问。<br />
+（PS: 国内稍具规模的中大型技术公司应该有正常访问国外网站的代理服务器）</p>
+
+<h1 id="docker-配置-http-代理">Docker 配置 HTTP 代理</h1>
+
+<p>官网文档比较详细的写了配置过程，我这里记录下。</p>
+
+<p><a href="https://docs.docker.com/engine/admin/systemd/#/http-proxy">Docker systemd http-proxy</a></p>
+:ET

@@ -1,0 +1,26 @@
+I"�<h2 id="用例-1-删除换行符">用例 1： 删除换行符</h2>
+
+<p>一个 IP 列表文件如下，实现将空行去掉，并删除逗号后面的换行，变成这样：<br />
+192.168.56.1,192.168.56.2,192.168.56.3,192.168.56.4,192.168.56.5,</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@Jamin-SFO1 ~]# <span class="nb">cat </span>test.txt
+192.168.56.1,
+
+192.168.56.2,
+
+192.168.56.3,
+
+192.168.56.4,
+
+192.168.56.5,
+<span class="o">[</span>root@Jamin-SFO1 ~]# <span class="nb">tr</span> <span class="nt">-s</span> <span class="s2">"</span><span class="se">\r\n</span><span class="s2">"</span> <span class="s2">","</span> &lt; test.txt
+192.168.56.1,192.168.56.2,192.168.56.3,192.168.56.4,192.168.56.5,
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://blog.csdn.net/jeffreyst_zb/article/details/8047065">linux tr 命令详解</a><br />
+<a href="http://man.linuxde.net/tr">tr 命令</a></p>
+
+:ET

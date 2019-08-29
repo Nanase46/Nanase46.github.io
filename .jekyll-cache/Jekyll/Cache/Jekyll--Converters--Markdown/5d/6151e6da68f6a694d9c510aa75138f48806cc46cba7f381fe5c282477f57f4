@@ -1,0 +1,23 @@
+I"�<h1 id="实例-1">实例 1</h1>
+
+<p>将一个文件的所有中特定行注释掉，比如下面例子将包含 test2 的行加上注释。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@VM_15_187_centos ~]# <span class="nb">cat </span>test.log
+<span class="nb">test
+</span>test2
+test3
+test2
+<span class="o">[</span>root@VM_15_187_centos ~]# <span class="nb">sed</span> <span class="nt">-i</span> <span class="s2">"/test2/s/^/#/"</span> test.log
+<span class="o">[</span>root@VM_15_187_centos ~]# <span class="nb">cat </span>test.log 
+<span class="nb">test</span>
+<span class="c">#test2</span>
+test3
+<span class="c">#test2</span>
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+
+<p><a href="http://bbs.chinaunix.net/thread-958787-1-1.html">sed 如何注释掉匹配行</a><br />
+<a href="http://sed.sourceforge.net/sed1line_zh-CN.html">SED 单行脚本快速参考</a></p>
+:ET

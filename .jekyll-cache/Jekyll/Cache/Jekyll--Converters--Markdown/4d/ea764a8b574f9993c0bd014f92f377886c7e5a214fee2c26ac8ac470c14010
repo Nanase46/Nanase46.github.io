@@ -1,0 +1,26 @@
+I"�<h1 id="引言">引言</h1>
+<p>前面一篇文章学习理解了 CGI 相关概念，那么 PHP SAPI 又是什么呢？<br />
+我的理解是 CGI　算　SAPI 的一种实现。CGI 和 CLI 都是 SAPI 的类型。</p>
+
+<h1 id="sapi-是什么">SAPI 是什么</h1>
+
+<p>SAPI (Server Application Programme Interface) “服务器应用程序接口”，可以认为是服务器端的 API。</p>
+
+<h1 id="php-中的-sapi">PHP 中的 SAPI</h1>
+
+<p>在 PHP 应用中，SAPI 是应用层（比如 Apache，Nginx，CLI 等）和 PHP 交互数据的入口。</p>
+
+<p>而就是 SAPI 这个入口，使得 PHP 和其上面的应用层解耦合了。</p>
+
+<p>SAPI 实现了和各种应用层的兼容，应用层可以根据自身情况，定制 SAPI，比如：</p>
+
+<ol>
+  <li>apache2handler 和 apache2filter，这是提供给 Apache mod_php 的 SAPI；</li>
+  <li>cgi，Web Server fork 出 cgi 进程使用的 sapi；</li>
+  <li>fastcgi，Web Server 采用网络通信或者网络 IPC 和 PHP 交换数据的 SAPI；</li>
+  <li>cli，命令行方式运行 PHP 脚本的 SAPI。</li>
+</ol>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://blog.csdn.net/fangru/article/details/9137079">说说php的sapi (cgi fastcgi .etc.)</a></p>
+:ET

@@ -1,0 +1,78 @@
+I"�<p>Linux 查看进程相关信息</p>
+
+<h1 id="引言">引言</h1>
+
+<p>研发需要知道某 Python 程序脚本所在目录，这研发，还好他不是后端研发。<br />
+不过当我们使用 ps 或 top 命令查看时，并不能查看到 Python 程序脚本的绝对路径。<br />
+我模糊地记得可以在<code class="highlighter-rouge">/proc/${PID}</code>下可以查到相关信息，但是很久没用过，忘记了，<br />
+现在我来重新学习记录下。</p>
+
+<h1 id="linux-查看进程的详细信息">Linux 查看进程的详细信息</h1>
+
+<p>Linux 在启动一个进程时，系统会在<code class="highlighter-rouge">/proc</code>下创建一个以 PID 命名的文件夹，在该文件夹下会有我们的进程的信息，
+其中包括一个名为 exe 的文件即记录了绝对路径，通过 ll 或 <code class="highlighter-rouge">ls –l</code>命令即可查看。</p>
+
+<ul>
+  <li>cwd 符号链接的是进程运行目录；</li>
+  <li>exe 符号链接就是执行程序的绝对路径；</li>
+  <li>cmdline 就是程序运行时输入的命令行命令；</li>
+  <li>environ 记录了进程运行时的环境变量；</li>
+  <li>fd 目录下是进程打开或使用的文件的符号连接。</li>
+</ul>
+
+<p>如下演示：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@xxxx_log ~]# ps aux | <span class="nb">grep </span>log_daemon
+root     24664  1.0  0.0 280804 28432 ?        S    Dec08  14:18 python log_daemon.py start
+root     32493  0.0  0.0 103256   844 pts/0    S+   17:12   0:00 <span class="nb">grep </span>log_daemon
+<span class="o">[</span>root@zmsg_log ~]# ll /proc/24664
+total 0
+dr-xr-xr-x 2 root root 0 Dec  8 22:24 attr
+<span class="nt">-rw-r--r--</span> 1 root root 0 Dec  8 22:24 autogroup
+<span class="nt">-r--------</span> 1 root root 0 Dec  8 22:24 auxv
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 cgroup
+<span class="nt">--w-------</span> 1 root root 0 Dec  8 22:24 clear_refs
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 18:37 cmdline
+<span class="nt">-rw-r--r--</span> 1 root root 0 Dec  8 22:24 <span class="nb">comm</span>
+<span class="nt">-rw-r--r--</span> 1 root root 0 Dec  8 22:24 coredump_filter
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 cpuset
+lrwxrwxrwx 1 root root 0 Dec  8 22:24 cwd -&gt; /home/xxxx/log_to_db		<span class="c"># Python 脚本在此目录下</span>
+<span class="nt">-r--------</span> 1 root root 0 Dec  8 22:24 environ
+lrwxrwxrwx 1 root root 0 Dec  8 22:24 exe -&gt; /usr/bin/python
+dr-x------ 2 root root 0 Dec  8 22:24 fd
+dr-x------ 2 root root 0 Dec  8 22:24 fdinfo
+<span class="nt">-r--------</span> 1 root root 0 Dec  8 22:24 io
+<span class="nt">-rw-------</span> 1 root root 0 Dec  8 22:24 limits
+<span class="nt">-rw-r--r--</span> 1 root root 0 Dec  8 22:24 loginuid
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 maps
+<span class="nt">-rw-------</span> 1 root root 0 Dec  8 22:24 mem
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 mountinfo
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 mounts
+<span class="nt">-r--------</span> 1 root root 0 Dec  8 22:24 mountstats
+dr-xr-xr-x 4 root root 0 Dec  8 22:24 net
+dr-x--x--x 2 root root 0 Dec  8 22:24 ns
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 numa_maps
+<span class="nt">-rw-r--r--</span> 1 root root 0 Dec  8 22:24 oom_adj
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 oom_score
+<span class="nt">-rw-r--r--</span> 1 root root 0 Dec  8 22:24 oom_score_adj
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 pagemap
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 personality
+lrwxrwxrwx 1 root root 0 Dec  8 22:24 root -&gt; /
+<span class="nt">-rw-r--r--</span> 1 root root 0 Dec  8 22:24 sched
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 schedstat
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 sessionid
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 smaps
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 stack
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 18:37 <span class="nb">stat</span>
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 statm
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 18:37 status
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 syscall
+dr-xr-xr-x 3 root root 0 Dec  8 22:24 task
+<span class="nt">-r--r--r--</span> 1 root root 0 Dec  8 22:24 wchan
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://lovesoo.org/view-processes-running-linux-full-path-method.html">Linux 查看进程运行的完整路径方法</a></p>
+:ET

@@ -1,0 +1,78 @@
+I"�<p>控制流</p>
+
+<p>控制代码的执行顺序</p>
+
+<p>For 循环就是一种控制流。</p>
+
+<h1 id="if-语句">if 语句</h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">if</span> <span class="err">条件一</span><span class="p">:</span>
+    <span class="err">语句块一</span>
+<span class="k">elif</span> <span class="err">条件二</span><span class="p">:</span>
+    <span class="err">语句块二</span>
+<span class="k">elif</span> <span class="err">条件三</span><span class="p">:</span>
+    <span class="err">语句块三</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="err">语句块四</span>
+
+</code></pre></div></div>
+
+<p>各个条件是互斥的。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="mi">90</span><span class="p">:</span>
+    <span class="n">is_best</span> <span class="o">=</span> <span class="bp">True</span>    <span class="c1"># 是优等生
+</span><span class="k">elif</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="mi">80</span><span class="p">:</span>
+    <span class="n">is_better</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c1"># 良
+</span><span class="k">elif</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="mi">60</span><span class="p">:</span>
+    <span class="n">is_ok</span> <span class="o">=</span> <span class="bp">True</span>      <span class="c1"># 及格
+</span><span class="k">else</span><span class="p">:</span>
+    <span class="n">Failed</span> <span class="o">=</span> <span class="bp">True</span>     <span class="c1"># 不及格
+</span>
+</code></pre></div></div>
+
+<h2 id="continue-和-break-语句">continue 和 break 语句</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">now</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">now</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">item</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">continue</span>    <span class="c1"># 跳过后面三句    
+</span>    <span class="k">if</span> <span class="n">item</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="k">break</span>       <span class="c1"># 跳出 for 循环  
+</span>    <span class="k">print</span> <span class="n">item</span>
+	
+</code></pre></div></div>
+
+<h2 id="while-语句">while 语句</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">while</span> <span class="err">条件</span><span class="p">:</span>
+    <span class="c1"># do something
+</span>
+</code></pre></div></div>
+
+<p>只要条件为 True 就一直执行
+停止办法：</p>
+
+<ul>
+  <li>改变条件（while 内部），使得条件变为 False</li>
+  <li>使用 break 强制退出</li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+<span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">a</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+	    <span class="c1"># continue  # 如果用 continue，则是死循环
+</span>        <span class="k">break</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">pop</span><span class="p">())</span>
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+
+<p><a href="https://python.freelycode.com/fcode/visualexe">Python 代码可视化执行过程</a></p>
+:ET

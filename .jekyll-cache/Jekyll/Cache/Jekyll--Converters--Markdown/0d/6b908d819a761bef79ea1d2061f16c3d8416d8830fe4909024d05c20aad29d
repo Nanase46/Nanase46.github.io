@@ -1,0 +1,165 @@
+I"$<h1 id="salt-远程执行">Salt 远程执行</h1>
+
+<p>Salt 命令执行使用一个通用的结构，如下图：</p>
+
+<p><img src="https://docs.saltstack.com/en/getstarted/images/cmd-syntax.png" alt="salt-cmd-syntax" /></p>
+
+<p>使用 sys.doc 查询模块相关信息</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@linux-node1 ~]# salt <span class="s1">'*'</span> sys.doc sys.doc
+sys.doc:
+
+    Return the docstrings <span class="k">for </span>all modules. Optionally, specify a module or a
+    <span class="k">function </span>to narrow the selection.
+
+    The strings are aggregated into a single document on the master <span class="k">for </span>easy
+    reading.
+
+    Multiple modules/functions can be specified.
+
+    CLI Example:
+
+        salt <span class="s1">'*'</span> sys.doc
+        salt <span class="s1">'*'</span> sys.doc sys
+        salt <span class="s1">'*'</span> sys.doc sys.doc
+        salt <span class="s1">'*'</span> sys.doc network.traceroute user.info
+
+    Modules can be specified as globs.
+
+    New <span class="k">in </span>version 2015.5.0
+
+        salt <span class="s1">'*'</span> sys.doc <span class="s1">'sys.*'</span>
+        salt <span class="s1">'*'</span> sys.doc <span class="s1">'sys.list_*'</span>
+    
+</code></pre></div></div>
+
+<h2 id="运行-shell-命令">运行 Shell 命令</h2>
+
+<p>使用 cmd.run</p>
+
+<p>cmd.run 直接好用，但 Salt 远程执行更强大的是执行函数，这样不用写复杂的脚本来实现功能，而且返回的结果是格式化的，便于进一步处理。下面列举一些执行函数。</p>
+
+<h2 id="检测-minion-运行状态">检测 Minion 运行状态</h2>
+
+<p>使用 test.ping</p>
+<blockquote>
+
+  <p>Used to make sure the minion is up and responding. Not an ICMP ping.</p>
+</blockquote>
+
+<h2 id="显示磁盘用量">显示磁盘用量</h2>
+
+<p>使用 disk.usage</p>
+
+<h2 id="安装一个软件包">安装一个软件包</h2>
+
+<p>使用 pkg.install</p>
+
+<h2 id="列出网络接口">列出网络接口</h2>
+
+<p>使用 network.interfaces</p>
+
+<p>更多执行模块请看 <a href="https://docs.saltstack.com/en/latest/ref/modules/all/index.html">EXECUTION MODULES</a></p>
+
+<h1 id="深入学习远程执行">深入学习远程执行</h1>
+
+<h2 id="targeting-目标">Targeting 目标</h2>
+
+<p>用于指定哪些 Minion 来执行后面的命令或模块函数</p>
+
+<p>指定匹配 Minion 的方法可以分为两类：</p>
+
+<ul>
+  <li>
+    <p>和 minion id 有关的</p>
+
+    <ol>
+      <li>minion id (linux-node1.example.com)</li>
+      <li>
+        <table>
+          <tbody>
+            <tr>
+              <td>通配符 (linux-node*</td>
+              <td>linux-node[1</td>
+              <td>2].example.com</td>
+              <td>linux-node?.example.com)</td>
+            </tr>
+          </tbody>
+        </table>
+      </li>
+      <li>列表 (salt -L ‘linux-node1.example.com,linux-node2.example.com’ test.ping)</li>
+      <li>
+        <table>
+          <tbody>
+            <tr>
+              <td>正则表达式 (salt -E ‘linux-(node1</td>
+              <td>node2)*’ test.ping)</td>
+            </tr>
+          </tbody>
+        </table>
+      </li>
+    </ol>
+  </li>
+  <li>
+    <p>和 minion id 无关的</p>
+    <ol>
+      <li>
+        <table>
+          <tbody>
+            <tr>
+              <td>子网/IP 地址 (salt -S 192.168.56.11 test.ping</td>
+              <td>salt -S 192.168.56.0/24 test.ping)</td>
+            </tr>
+          </tbody>
+        </table>
+      </li>
+      <li>Grains 匹配</li>
+      <li>Compound matchers 混合匹配</li>
+      <li>Node Group 分组匹配</li>
+    </ol>
+  </li>
+</ul>
+
+<p>主机名设置方案：</p>
+
+<ol>
+  <li>IP地址</li>
+  <li>根据业务来进行设置
+ redis-node1-redis03-idc03-soa.example.com
+    <ul>
+      <li>redis-node1 redis第一个节点</li>
+      <li>redis03 集群</li>
+      <li>idc03 机房</li>
+      <li>soa 业务线</li>
+    </ul>
+  </li>
+</ol>
+
+<h2 id="execution-modules-执行模块">Execution Modules 执行模块</h2>
+
+<p>Salt 内置了丰富的执行模块，每一个模块都是一个 Python 文件，前面已举例。下面再列举一些。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>salt <span class="s1">'*'</span> network.active_tcp
+salt <span class="s1">'*'</span> network.arp
+
+salt <span class="s1">'*'</span> service.available sshd
+salt <span class="s1">'*'</span> service.get_all
+
+salt-cp <span class="s1">'*'</span> /etc/hosts /tmp/
+
+salt <span class="s1">'*'</span> state.single pkg.installed <span class="nv">name</span><span class="o">=</span>lsof
+
+</code></pre></div></div>
+
+<h2 id="returners-结果返回程序">Returners 结果返回程序</h2>
+
+<p>将 Salt minion 返回的结果数据发送到其他的系统，比如数据库。  Returners 可以运行在 Minion 或 Master 上。</p>
+
+<h2 id="编写执行模块">编写执行模块</h2>
+
+<p>可以自己可以需要编写自己的执行模块</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://docs.saltstack.com/en/getstarted/fundamentals/remotex.html">EXECUTE COMMANDS</a></p>
+
+:ET

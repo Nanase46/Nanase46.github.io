@@ -1,0 +1,21 @@
+I"<h1 id="引言">引言</h1>
+
+<p>NoSQL 数据库里面比较常见的有 Memcached, Redis, MongoDB 等等，今天来了解下 Redis。</p>
+
+<h1 id="redis-简介">Redis 简介</h1>
+
+<pre>
+
+Redis is an open source (BSD licensed), in-memory data structure store, 
+used as database, cache and message broker. 
+It supports data structures such as strings, hashes, lists, sets, sorted sets with range queries, bitmaps, 
+hyperloglogs and geospatial indexes with radius queries. 
+Redis has built-in replication, Lua scripting, LRU eviction, transactions 
+and different levels of on-disk persistence, 
+and provides high availability via Redis Sentinel and automatic partitioning with Redis Cluster.
+
+</pre>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://redis.io/">Redis 官网</a></p>
+:ET

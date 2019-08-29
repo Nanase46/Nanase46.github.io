@@ -1,0 +1,137 @@
+I"�<p>Docker 数据管理</p>
+
+<p>Docker 可以做持久化的数据保存，在容器中管理数据主要有两种方式：</p>
+
+<ul>
+  <li>数据卷（Data volumes）</li>
+  <li>数据卷容器（Data volume containers）</li>
+</ul>
+
+<h1 id="数据卷">数据卷</h1>
+
+<p>数据卷是一个可供一个或多个容器使用的特殊目录，它绕过 UFS，可以提供很多有用的特性：</p>
+
+<ul>
+  <li>数据卷可以在容器之间共享和重用</li>
+  <li>对数据卷的修改会立马生效</li>
+  <li>对数据卷的更新，不会影响镜像</li>
+  <li>数据卷默认会一直存在，即使容器被删除</li>
+</ul>
+
+<blockquote>
+
+  <p>注意：数据卷的使用，类似于 Linux 下对目录或文件进行 mount，镜像中的被指定为挂载点的目录中的文件会隐藏掉，能显示看的是挂载的数据卷。</p>
+</blockquote>
+
+<p>数据卷配置的命令参数有如下 2 种：</p>
+
+<ul>
+  <li>-v dst		直接指定容器中目标目录</li>
+  <li>-v src:dst	指定本地主机源目录和容器中的目标目录</li>
+</ul>
+
+<h2 id="直接指定容器中目标目录">直接指定容器中目标目录</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 运行一个数据卷的测试容器，直接指定容器中目标目录</span>
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">-d</span> <span class="nt">--name</span> nginx-volume-test1 <span class="nt">-v</span> /data/ nginx
+9e061b675f1a896101799d3426ab4e7f06add98c81425929e5d190e2d8a57b14
+
+<span class="c"># 进入容器查看 /data 目录</span>
+<span class="o">[</span>root@linux-node1 ~]# ./docker_in.sh nginx-volume-test1
+root@9e061b675f1a:/# <span class="nb">ls</span> /data/
+root@9e061b675f1a:/# 
+
+<span class="c"># 容器中 /data 目录为空，如何知道此目录对应的本地文件系统目录？</span>
+<span class="c"># 可以使用 docker inspect 命令获取，如下：</span>
+<span class="o">[</span>root@linux-node1 ~]# docker inspect <span class="nt">-f</span>  nginx-volume-test1
+<span class="o">[{</span>71b93b8e6130801826910d3c2ee6db108d2d577bab55937846029d83b78b2e01 /var/lib/docker/volumes/71b93b8e6130801826910d3c2ee6db108d2d577bab55937846029d83b78b2e01/_data /data <span class="nb">local  true</span> <span class="o">}]</span>
+
+<span class="c"># 进入对应的本地文件系统目录并创建测试文件 </span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cd</span> /var/lib/docker/volumes/71b93b8e6130801826910d3c2ee6db108d2d577bab55937846029d83b78b2e01/_data
+<span class="o">[</span>root@linux-node1 _data]# ll
+total 0
+<span class="o">[</span>root@linux-node1 _data]# <span class="nb">touch </span>test1
+
+<span class="c"># 在容器可以看到上面刚创建的文件</span>
+root@9e061b675f1a:/# <span class="nb">ls</span> /data/
+test1
+
+</code></pre></div></div>
+
+<h2 id="指定本地主机源目录和容器中的目标目录">指定本地主机源目录和容器中的目标目录</h2>
+
+<p>注意：Dockerfile 中不支持这种用法，这是因为 Dockerfile 是为了移植和分享用的。<br />
+然而，不同操作系统的路径格式不一样，所以目前还不能支持。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">mkdir</span> <span class="nt">-p</span> /data/docker-volume-nginx
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">-d</span> <span class="nt">--name</span> nginx-volume-test2 <span class="nt">-v</span> /data/docker-volume-nginx/:/data nginx
+6d2046d642d7651aec99c5cc88c52966a7f017a51a53561297d0040eecb63071
+
+<span class="c"># 进入容器后创建测试文件</span>
+<span class="o">[</span>root@linux-node1 ~]# ./docker_in.sh nginx-volume-test2
+root@6d2046d642d7:/# <span class="nb">cd</span> /data/
+root@6d2046d642d7:/data# <span class="nb">touch </span>test2
+
+<span class="c"># 在对应的本地文件系统目录查看到刚创建的文件</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">ls</span> /data/docker-volume-nginx/
+test2
+
+<span class="c"># 可以进行只读挂载，在目标目录后加上 ro 参数，如下：</span>
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">-d</span> <span class="nt">--name</span> nginx-volume-test3 <span class="nt">-v</span> /data/docker-volume-nginx/:/data:ro nginx
+868a9e6b7aa0d72a9a48145cd82d122fe261dfcce645a27f71b334dac8b50a3b
+<span class="o">[</span>root@linux-node1 ~]# ./docker_in.sh nginx-volume-test3
+root@868a9e6b7aa0:/# <span class="nb">ls</span> /data/
+test2
+root@868a9e6b7aa0:/# <span class="nb">cd</span> /data/
+root@868a9e6b7aa0:/data# <span class="nb">touch </span>test3
+<span class="nb">touch</span>: cannot <span class="nb">touch</span> <span class="s1">'test3'</span>: Read-only file system
+</code></pre></div></div>
+
+<h2 id="挂载文件">挂载文件</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">--rm</span> <span class="nt">-it</span> <span class="nt">-v</span> /root/.bash_history:/.bash_history nginx /bin/bash
+<span class="c"># --rm 当退出容器时会自动删除容器，常用于测试目的</span>
+root@b8aa1ce69bbc:/# <span class="nb">cat</span> /.bash_history 
+...文件内容省略...
+
+</code></pre></div></div>
+
+<h1 id="数据卷容器">数据卷容器</h1>
+
+<p>如果你有一些持续更新的数据需要在容器之间共享，最好创建数据卷容器。<br />
+数据卷容器，其实就是一个正常的容器，专门用来提供数据卷供其它容器挂载的。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 运行一个容器，引用之前创建的 nginx-volume-test2 容器中挂载的卷</span>
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">-it</span> <span class="nt">--name</span> volume-test <span class="nt">--volumes-from</span> nginx-volume-test2 centos /bin/bash
+<span class="o">[</span>root@fa89f37d06f0 /]# <span class="nb">ls</span> /data/
+test2
+
+<span class="c"># 使用 --volumes-from 参数所挂载数据卷的容器自己并不需要保持在运行状态，如下，容器停掉后还能正常使用卷</span>
+<span class="o">[</span>root@linux-node1 ~]# docker stop nginx-volume-test2
+nginx-volume-test2
+<span class="o">[</span>root@fa89f37d06f0 /]# <span class="nb">touch</span> /data/test2-1
+<span class="o">[</span>root@fa89f37d06f0 /]# <span class="nb">ls</span> /data/test2-1
+/data/test2-1
+
+<span class="c"># 下面再创建一个 nfs-test 的数据卷容器</span>
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">-d</span> <span class="nt">--name</span> nfs-test <span class="nt">-v</span> /data/nfs-data:/data nginx
+ed81da17ee16df1ce1d8bdc712c0a3508e25e8fd57f5a50fb8bdaa59ff0caa2e
+
+<span class="c"># 创建一个测试容器引用上面的数据卷容器</span>
+docker run <span class="nt">--rm</span> <span class="nt">-it</span> <span class="nt">--volumes-from</span> nfs-test centos /bin/bash
+<span class="c"># 创建测试文件 </span>
+<span class="o">[</span>root@538885f1397d /]# <span class="nb">touch</span> /data/test
+<span class="c"># 在本地文件系统对应目录中可以看到刚才创建的测试文件</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">ls</span> /data/nfs-data/
+<span class="nb">test</span>
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://yeasy.gitbooks.io/docker_practice/content/data_management/volume.html">数据卷</a><br />
+<a href="https://yeasy.gitbooks.io/docker_practice/content/data_management/container.html">数据卷容器</a></p>
+:ET

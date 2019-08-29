@@ -1,0 +1,58 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>某业务配置完成后需要提交数据到一 API 接口，提交命令在 Shell 中，首先想到使用的 json 数据，其中引用了 Shell 变量。</p>
+
+<h1 id="问题shell-变量没解析成功及解决方法">问题：Shell 变量没解析成功及解决方法</h1>
+
+<p>curl 提交数据部分如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-XPOST</span> <span class="nt">-H</span> <span class="s2">"Content-Type: application/json"</span> http://admin.xxx.cn/xxx/AddServer <span class="se">\</span>
+<span class="nt">-d</span> <span class="s1">'{\
+"platform_name":"${PLATFORM}", \
+"region_id":"${SID}", \
+"game_db_ip":"${GAME_DOMAIN}", \
+"game_ip":"${GAME_DOMAIN}", \
+"log_db_ip":"admin.xxx.cn", \
+"server_type":"3", \
+"server_state":"1", \
+"main_server":"0"\
+}'</span>
+</code></pre></div></div>
+
+<p>其中上面引用的 Shell 变量没有被解析。主要是引号问题。curl 中引号说明如下：</p>
+
+<blockquote>
+
+  <p>The double quotes in the -H arguments (as in -H “foo bar”) tell bash to keep what’s inside as a single argument (even if it contains spaces).<br />
+The single quotes in the –data argument (as in –data ‘foo bar’) do the same, except they pass all text verbatim (including double quote characters and the dollar sign).<br />
+To insert a variable in the middle of a single quoted text, you have to end the single quote, then concatenate with the double quoted variable, and re-open the single quote to continue the text: ‘foo bar’“$variable”‘more foo’.</p>
+</blockquote>
+
+<p>如上，想要 Shell 变量被解析，修改成如下的引号引用变量：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-XPOST</span> <span class="nt">-H</span> <span class="s2">"Content-Type: application/json"</span> http://admin.xxx.cn/zmsgApi/xxx/AddServer <span class="se">\</span>
+<span class="nt">-d</span> <span class="s1">'{\
+"platform_name":"'</span><span class="s2">"</span><span class="k">${</span><span class="nv">PLATFORM</span><span class="k">}</span><span class="s2">"</span><span class="s1">'", \
+"region_id":"'</span><span class="s2">"</span><span class="k">${</span><span class="nv">SID</span><span class="k">}</span><span class="s2">"</span><span class="s1">'", \
+"game_db_ip":"'</span><span class="s2">"</span><span class="k">${</span><span class="nv">GAME_DOMAIN</span><span class="k">}</span><span class="s2">"</span><span class="s1">'", \
+"game_ip":"'</span><span class="s2">"</span><span class="k">${</span><span class="nv">GAME_DOMAIN</span><span class="k">}</span><span class="s2">"</span><span class="s1">'", \
+"log_db_ip":"admin.xxx.cn", \
+"server_type":"3", \
+"server_state":"1", \
+"main_server":"0"\
+}'</span>
+</code></pre></div></div>
+
+<h1 id="后续">后续</h1>
+
+<p>使用上面的方法可以正确解析 Shell 变量，但又遇到另一个问题，看上面的提交命令，为了易读，使用了断行符“\”，<br />
+引发的问题是 curl 提交过去会出现问题。<br />
+于是最终不使用这种 curl POST 提交 json 数据的方法，直接通过 GET 提交，在 URL 包含参数的方法。如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="s2">"http://admin.xxx.cn/xxx/AddServer?platform_name=</span><span class="k">${</span><span class="nv">PLATFORM</span><span class="k">}</span><span class="s2">&amp;region_id=</span><span class="k">${</span><span class="nv">SID</span><span class="k">}</span><span class="se">\</span><span class="s2">
+&amp;game_db_ip=</span><span class="k">${</span><span class="nv">GAME_DOMAIN</span><span class="k">}</span><span class="s2">&amp;game_ip=</span><span class="k">${</span><span class="nv">GAME_DOMAIN</span><span class="k">}</span><span class="s2">&amp;log_db_ip=admin.xxx.cn&amp;server_type=3&amp;server_state=1&amp;main_server=0"</span>
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://stackoverflow.com/questions/17029902/using-curl-post-with-variables-defined-in-bash-script-functions">Using curl POST with variables defined in bash script functions</a>　　　</p>
+:ET

@@ -1,0 +1,60 @@
+I"�<h1 id="写入文件">写入文件</h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">poem</span> <span class="o">=</span> <span class="s">'''</span><span class="se">\
+</span><span class="s">Programming is fun,
+When the work is done.
+If you wanna make your work also fun:
+    Use Python!
+'''</span>
+
+<span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">'poem.txt'</span><span class="p">,</span> <span class="s">'w'</span><span class="p">)</span>           <span class="c1"># 打开文件的方式：r/w/a，open 方法返回值是一个文件描述符，赋值给 f
+</span>                                    <span class="c1"># 文件描述符可以理解成一个表示文件的对象
+</span><span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">poem</span><span class="p">)</span>                       <span class="c1"># write text to file
+</span><span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>                           <span class="c1"># close the file，打开文件后一定要关闭，如果不关闭，会占用系统的文件描述符资源
+</span>
+</code></pre></div></div>
+
+<h1 id="读取文件">读取文件</h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">'poem.txt'</span><span class="p">)</span>                <span class="c1"># 默认为 r 模式
+</span><span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">line</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>              <span class="c1"># 空行表示读取结束
+</span>        <span class="k">break</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="s">""</span><span class="p">)</span>           <span class="c1"># print 内容后面默认会增加一个 \n，这里 end 禁止结尾增加 \n，改为增加 ""
+</span><span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>                           <span class="c1"># close the file
+</span>
+</code></pre></div></div>
+
+<h1 id="使用-with-语句后-python-自动关闭文件">使用 with 语句后 Python 自动关闭文件</h1>
+
+<p>使用 with 语句后，不用使用 close 方法关闭文件了。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">poem</span> <span class="o">=</span> <span class="s">'''</span><span class="se">\
+</span><span class="s">Programming is fun,
+When the work is done.
+If you wanna make your work also fun:
+    Use Python!
+'''</span>
+
+<span class="c1"># 写入文件
+</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">'poem.txt'</span><span class="p">,</span> <span class="s">'w'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">poem</span><span class="p">)</span>
+    
+    
+<span class="c1"># 读取文件
+</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">'poem.txt'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>      
+            <span class="k">break</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="s">""</span><span class="p">)</span>
+
+</code></pre></div></div>
+
+:ET

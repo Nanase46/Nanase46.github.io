@@ -1,0 +1,53 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>在一台 CentOS 7 服务器上使用 netstat 命令时，提示没有此命令。为什么？</p>
+
+<h1 id="centos-7-下-ss-替代-netstat">CentOS 7 下 ss 替代 netstat</h1>
+
+<p>原因是什么？简单来说，在有大量 sockets 时，ss 更加高效快速。
+下面这篇文章对此进行了详细说明。我这就不再多说了。<br />
+<a href="http://roclinux.cn/?p=2420">《篡权的 ss》</a></p>
+
+<h1 id="ss-输出格式有缺憾">ss 输出格式有缺憾</h1>
+
+<p>既然 CentOS 7 在默认最小化安装中摒弃了 netstat (属于 net-tools 包)，那么还是熟悉使用 ss 吧。<br />
+我使用 netstat 最常用的选项是 <code class="highlighter-rouge">netstat -lntp</code>，转换到 ss 时，几个选项都还继承了 netstat 的意义。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node2 ~]# ss <span class="nt">-ltnp</span>
+State      Recv-Q Send-Q                                                            Local Address:Port                                                                           Peer Address:Port              
+LISTEN     0      50                                                                            <span class="k">*</span>:3306                                                                                      <span class="k">*</span>:<span class="k">*</span>                   <span class="nb">users</span>:<span class="o">((</span><span class="s2">"mysqld"</span>,pid<span class="o">=</span>3310,fd<span class="o">=</span>14<span class="o">))</span>
+LISTEN     0      50                                                                192.168.56.12:9200                                                                                      <span class="k">*</span>:<span class="k">*</span>                   <span class="nb">users</span>:<span class="o">((</span><span class="s2">"java"</span>,pid<span class="o">=</span>30992,fd<span class="o">=</span>85<span class="o">))</span>
+LISTEN     0      128                                                                           <span class="k">*</span>:8081                                                                                      <span class="k">*</span>:<span class="k">*</span>                   <span class="nb">users</span>:<span class="o">((</span><span class="s2">"httpd"</span>,pid<span class="o">=</span>58518,fd<span class="o">=</span>3<span class="o">)</span>,<span class="o">(</span><span class="s2">"httpd"</span>,pid<span class="o">=</span>32905,fd<span class="o">=</span>3<span class="o">)</span>,<span class="o">(</span><span class="s2">"httpd"</span>,pid<span class="o">=</span>32904,fd<span class="o">=</span>3<span class="o">)</span>,<span class="o">(</span><span class="s2">"httpd"</span>,pid<span class="o">=</span>32903,fd<span class="o">=</span>3<span class="o">)</span>,<span class="o">(</span><span class="s2">"httpd"</span>,pid<span class="o">=</span>32902,fd<span class="o">=</span>3<span class="o">)</span>,<span class="o">(</span><span class="s2">"httpd"</span>,pid<span class="o">=</span>32901,fd<span class="o">=</span>3<span class="o">))</span>
+LISTEN     0      50                                                                192.168.56.12:9300                                                                                      <span class="k">*</span>:<span class="k">*</span>                   <span class="nb">users</span>:<span class="o">((</span><span class="s2">"java"</span>,pid<span class="o">=</span>30992,fd<span class="o">=</span>80<span class="o">))</span>
+LISTEN     0      128                                                                           <span class="k">*</span>:22                                                                                        <span class="k">*</span>:<span class="k">*</span>                   <span class="nb">users</span>:<span class="o">((</span><span class="s2">"sshd"</span>,pid<span class="o">=</span>20133,fd<span class="o">=</span>3<span class="o">))</span>
+LISTEN     0      100                                                                   127.0.0.1:25                                                                                        <span class="k">*</span>:<span class="k">*</span>                   <span class="nb">users</span>:<span class="o">((</span><span class="s2">"master"</span>,pid<span class="o">=</span>2048,fd<span class="o">=</span>13<span class="o">))</span>
+LISTEN     0      511                                                                           <span class="k">*</span>:5601                                                                                      <span class="k">*</span>:<span class="k">*</span>                   <span class="nb">users</span>:<span class="o">((</span><span class="s2">"node"</span>,pid<span class="o">=</span>32500,fd<span class="o">=</span>11<span class="o">))</span>
+LISTEN     0      100                                                                         ::1:25                                                                                       :::<span class="k">*</span>                   <span class="nb">users</span>:<span class="o">((</span><span class="s2">"master"</span>,pid<span class="o">=</span>2048,fd<span class="o">=</span>14<span class="o">))</span>
+<span class="o">[</span>root@linux-node2 ~]# netstat <span class="nt">-lntp</span>
+Active Internet connections <span class="o">(</span>only servers<span class="o">)</span>
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 0.0.0.0:3306            0.0.0.0:<span class="k">*</span>               LISTEN      3310/mysqld         
+tcp        0      0 192.168.56.12:9200      0.0.0.0:<span class="k">*</span>               LISTEN      30992/java          
+tcp        0      0 0.0.0.0:8081            0.0.0.0:<span class="k">*</span>               LISTEN      32901/httpd         
+tcp        0      0 192.168.56.12:9300      0.0.0.0:<span class="k">*</span>               LISTEN      30992/java          
+tcp        0      0 0.0.0.0:22              0.0.0.0:<span class="k">*</span>               LISTEN      20133/sshd          
+tcp        0      0 127.0.0.1:25            0.0.0.0:<span class="k">*</span>               LISTEN      2048/master         
+tcp        0      0 0.0.0.0:5601            0.0.0.0:<span class="k">*</span>               LISTEN      32500/node          
+tcp6       0      0 ::1:25                  :::<span class="k">*</span>                    LISTEN      2048/master  
+
+</code></pre></div></div>
+
+<p>看了上面 ss 和 netstat 的输出结果（这里显示得很长，实际在日常使用的终端连接软件上，一般最后一列会换行），<br />
+真让我不太想用 ss 了，有没有办法格式化下输出呢？<br />
+不止我一人这样想，<a href="http://unix.stackexchange.com/questions/252744/ss-linux-socket-statistics-utility-output-format">ss - linux socket statistics utility output format</a> 里面的这位和我一样的想法。<br />
+回答里面具体说了 ss 输出格式不太美观的原因，也推荐了几种方法稍微格式化一下输出。<br />
+如 <code class="highlighter-rouge">ss -lntp | cat</code>。</p>
+
+<p>现在我还是 2 个命令都使用，因为还是看不太惯 ss 的程序信息列输出。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://roclinux.cn/?p=2420">《篡权的 ss》</a><br />
+<a href="http://unix.stackexchange.com/questions/252744/ss-linux-socket-statistics-utility-output-format">ss - linux socket statistics utility output format</a><br />
+<a href="http://unix.stackexchange.com/questions/146190/commands-not-found-netstat-nmap-on-centos-7">Commands not found: netstat, nmap on CentOS 7</a></p>
+:ET

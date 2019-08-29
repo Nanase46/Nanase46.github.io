@@ -1,0 +1,35 @@
+I"<h1 id="引言">引言</h1>
+<p>我现在的笔记本电脑已经用了好几年的时间了，需要更新换代了。<br />
+首选是最新款 MacBook Pro 15”，但有一个原因阻碍了马上购买，就是它不支持 32GB 内存。
+自认为 Pro 用户的我，还是想等待 32GB 内存版本。<br />
+那为什么它不支持 32GB 内存呢？网上有很多文章分析了，深入分析可以得出好些原因，我附在 Ref 中。<br />
+我把最可能的本质原因简要总结一下，如下。</p>
+
+<h1 id="原因">原因</h1>
+
+<h2 id="1用于笔记本电脑的-lpddr3-单颗容量现在最大只有-32gb4gb">1.用于笔记本电脑的 LPDDR3 单颗容量现在最大只有 32Gb(4GB)</h2>
+<h2 id="2-intel-core-系列-cpu-现在还不支持-lpddr4-内存">2. Intel Core 系列 CPU 现在还不支持 LPDDR4 内存</h2>
+
+<p>MacBook Pro 2017 上配置板载内存是 4 颗 32Gb(4GB) 的 LPDDR3 内存芯片，
+现在 LPDDR3 单颗容量最大为 48Gb(8GB)，三星家出的，但它是用于智能手机的，不能用于笔记本电脑，<br />
+现在能用于笔记本电脑的 LPDDR3 单颗容量最大只有 32Gb(4GB)，4 颗上限就是 16GB。
+要实现 32GB，只能采用 8 颗粒的方案，可以在背面多放 4 颗 DRAM，这需要更改现有的 PCB 布局，但苹果并没有这么做。
+另外，如果使用 LPDDR4 内存呢，现在能量产的 LPDDR4 内存可以达到单颗粒 64Gb(封装方式支持问题暂不考虑)，
+但 Intel Kaby Lake CPU 并不支持 LPDDR4 内存。</p>
+
+<h2 id="个人期望">个人期望</h2>
+
+<p>苹果现在把 MacBook Pro 重点放在轻薄上，更改笔记本内部布局，增加更多 DRAM 的可能性并不大。<br />
+用于笔记本电脑的 LPDDR3 单颗容量现在最大只有 32Gb(4GB)，增加到 64Gb 的可能性也不大。<br />
+所以现在大概只能期望更换 LPDDR4 内存才能达到 32GB 内存目标，进一步，这个只能期望 Intel 的 CPU 能够支持 LPDDR4 内存。<br />
+关于 Intel CPU 什么时候能支持 LPDDR4 内存又是一个不可预期的问题（估计从下一个 10nm Cannon Lake 系列开始，Intel 给出的时间是在 2017 年底）。</p>
+
+<p><strong>总结：</strong> MacBook Pro 什么时候能支持 32GB 内存很大程度上依赖 Intel CPU 什么时候能支持 LPDDR4 内存。<br />
+所以这段时间也一直在关注 Intel CPU 的一些新闻。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.zhihu.com/question/60794758">如何看待苹果 2017 款 MacBook Pro 仍然使用 LPDDR3 内存？</a><br />
+<a href="http://www.samsung.com/semiconductor/products/dram/mobile-dram/">Samsung Mobile DRAM</a><br />
+<a href="https://www.skhynix.com/products.do?ct1=36&amp;ct2=41&amp;lang=eng">Hynix DRAM</a><br />
+<a href="https://www.micron.com/products/dram">Micron DRAM</a></p>
+:ET

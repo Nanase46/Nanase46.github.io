@@ -1,0 +1,17 @@
+I"P<h1 id="saltstack-file-模块-append-方法用例">SaltStack file 模块 append 方法用例</h1>
+
+<p>需要写一个添加 SSH 公钥到部分服务器的状态文件。使用 Salt file 模块 append 方法。
+SLS 文件内容如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@localhost custom]# <span class="nb">cat </span>add_test_key.sls 
+Add-test-ssh-key:
+  file.append:
+    - name: /root/.ssh/.keys
+    - text:
+      - <span class="s2">"#test"</span>     <span class="c"># 注意此处，当时这里没加上双引号，导致这行没有加上，如果要追加的行首是 # 号，刚需要将此行用双引号引起来</span>
+      - <span class="nv">environment</span><span class="o">=</span><span class="s2">"SSH_USER=test"</span> ssh-dss AAAAB3+xBhAo...省略...HFGoiETbIz+f6Ty4Q5j6uUhN+08<span class="o">=</span> <span class="nb">test</span>@test.com
+</code></pre></div></div>
+
+<p>#Ref 
+<a href="https://docs.saltstack.com/en/latest/ref/modules/all/salt.modules.file.html">SALT.MODULES.FILE</a></p>
+:ET

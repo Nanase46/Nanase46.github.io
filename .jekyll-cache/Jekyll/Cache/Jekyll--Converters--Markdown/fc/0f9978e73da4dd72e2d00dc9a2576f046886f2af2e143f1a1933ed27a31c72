@@ -1,0 +1,83 @@
+I"�<h1 id="简介">简介</h1>
+
+<blockquote>
+
+  <p>Salt is a new approach to infrastructure management built on a dynamic communication bus. <br />
+Salt can be used for data-driven orchestration, remote execution for any infrastructure, <br />
+configuration management for any app stack, and much more.</p>
+</blockquote>
+
+<blockquote>
+
+  <p>SaltStack 是用 Python 语言编写的，提供了 API、支持多种操作系统（所有类 Unix 系统都默认安装 Python），Windows 只能安装 Minion 端程序。</p>
+</blockquote>
+
+<p>SaltStack 三大功能：</p>
+
+<ul>
+  <li>远程执行</li>
+  <li>配置管理（状态很难回滚，可以管理静态文件）</li>
+  <li>云管理</li>
+</ul>
+
+<p>SaltStack 四种运行方式：</p>
+
+<ul>
+  <li>Local</li>
+  <li>Master/Minion（传统 C/S 架构）</li>
+  <li>Syndic（对应于 Zabbix 的 Proxy)</li>
+  <li>Salt SSH （AGENTLESS SALT）</li>
+</ul>
+
+<h1 id="安装配置">安装配置</h1>
+
+<h2 id="安装">安装</h2>
+
+<p>使用 yum 方式安装，比较简单</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>yum <span class="nb">install </span>https://repo.saltstack.com/yum/redhat/salt-repo-latest-1.el7.noarch.rpm <span class="nt">-y</span>
+
+yum <span class="nb">install </span>salt-master <span class="nt">-y</span>
+
+yum <span class="nb">install </span>salt-minion <span class="nt">-y</span>
+</code></pre></div></div>
+
+<h2 id="配置及启动">配置及启动</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl start salt-master
+
+<span class="nb">sed</span> <span class="nt">-i</span> <span class="s1">'s/# master: salt/master: 192.168.56.11/'</span> /etc/salt/minion
+systemctl start salt-minion
+</code></pre></div></div>
+
+<p>另外一个重要的参数就是 minion_id，每个 minion 都有一个单独的 ID，它放在 /etc/salt 目录下，如果不配置的话，默认就是主机名。</p>
+
+<p><em>minion_id 命名规则</em> <br />
+根据不同的业务来使用不同的规则（生产环境的参考例子）：</p>
+
+<ul>
+  <li>游戏业务： 使用 IP（游戏业务主要是区服域名，存在一台服务器多开情况，多个域名会对应一台服务器）</li>
+  <li>电商业务： 使用域名</li>
+</ul>
+
+<h1 id="minion-与-master-的认证">Minion 与 Master 的认证</h1>
+
+<p>Minion 启动后和 Master 连接，相互交换公钥后就完成了认证过程。 <br />
+注意 minion id 更改的影响，需要重新认证。</p>
+
+<blockquote>
+
+  <p>生产上碰到过的问题：游戏业务服务器变更比较频繁，我们会遇到服务器重装，原有 Minion 公钥失效的情况，
+这时需要定期删除重装服务器的之前的公钥，更智能的方式时，重装系统时，通知 Master 删除其公钥。</p>
+</blockquote>
+
+<p>salt-key 是 Master 上来执行管理用于认证的 Minion 公钥的命令。  
+具体用法请 man salt-key。</p>
+
+<p>关于 SaltStack 相关概念、架构及组件参考 Ref 中的官网文档，里面有不少图例说明不错。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://docs.saltstack.com/en/getstarted/">SaltStack Get Started</a><br />
+<a href="https://repo.saltstack.com/#rhel">Install SaltStack</a></p>
+
+:ET

@@ -1,0 +1,20 @@
+I"�<h1 id="zabbbix-告警的配置步骤">Zabbbix 告警的配置步骤</h1>
+
+<h2 id="1-设置-trigger">1. 设置 Trigger</h2>
+<h2 id="2-配置用户">2. 配置用户</h2>
+<h2 id="3-配置告警介质">3. 配置告警介质</h2>
+<h2 id="4-设置-action">4. 设置 Action</h2>
+
+<p>如下介绍如何设置 Trigger</p>
+
+<h1 id="1-定位到模板的-trigger-入口">1 定位到模板的 Trigger 入口</h1>
+
+<p><img src="https://raw.githubusercontent.com/JaminZhang/jaminzhang.github.io/master/images/Zabbix/Zabbix-Trigger-01-Choose-Trigger.png" alt="01-Choose-Trigger" /></p>
+
+<h1 id="2-创建-trigger">2 创建 Trigger</h1>
+<p><img src="https://raw.githubusercontent.com/JaminZhang/jaminzhang.github.io/master/images/Zabbix/Zabbix-Trigger-02-Create-Trigger.png" alt="02-Create-Trigger" /></p>
+
+<h1 id="3-配置-trigger">3 配置 Trigger</h1>
+<p><img src="https://raw.githubusercontent.com/JaminZhang/jaminzhang.github.io/master/images/Zabbix/Zabbix-Trigger-03-Config-Trigger.png" alt="03-Config-Trigger" /></p>
+
+:ET

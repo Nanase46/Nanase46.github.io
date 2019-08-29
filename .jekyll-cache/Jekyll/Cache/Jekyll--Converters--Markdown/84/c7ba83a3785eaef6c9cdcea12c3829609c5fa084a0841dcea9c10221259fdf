@@ -1,0 +1,127 @@
+I"�<p>OpenStack 简介</p>
+
+<h1 id="1-openstack-介绍">1 OpenStack 介绍</h1>
+
+<pre>
+
+OpenStack is a cloud operating system that controls large pools of compute, storage, 
+and networking resources throughout a datacenter, 
+all managed through a dashboard that gives administrators control 
+while empowering their users to provision resources through a web interface.
+
+</pre>
+
+<p><img src="http://www.openstack.org/themes/openstack/images/software/openstack-software-diagram.png" alt="openstack-software-diagram" /></p>
+
+<p>OpenStack 是（Infrastructure As A Service，基础设施即服务）IAAS 架构的实现，<br />
+OpenStack 是一个由 NASA（美国国家航空航天局）和 Rackspace 合作研发并发起的，以 Apache 许可证授权的自由软件和开放源代码项目。<br />
+OpenStack 是一个开源的云计算管理平台项目，由几个主要的组件组合起来完成具体工作。<br />
+OpenStack 支持几乎所有类型的云环境，项目目标是提供实施简单、可大规模扩展、丰富、标准统一的云计算管理平台。<br />
+OpenStack 通过各种互补的服务提供了基础设施即服务（IAAS）的解决方案，每个服务提供 API 以进行集成。<br />
+OpenStack 是一个旨在为公共及私有云的建设与管理提供软件的开源项目。<br />
+它的社区拥有超过 130 家企业及 1350 位开发者，这些机构与个人都将 OpenStack 作为基础设施即服务（IAAS）资源的通用前端。<br />
+OpenStack 项目的首要任务是简化云的部署过程并为其带来良好的可扩展性。
+OpenStack 云计算平台帮助服务商和企业内部实现类似于 Amazon EC2 和 S3 的云基础架构服务(Infrastructure as a Service, IaaS)。<br />
+OpenStack 包含两个主要模块：Nova 和 Swift，前者是 NASA 开发的虚拟服务器部署和业务计算模块；后者是 Rackspace 开发的分布式云存储模块，
+两者可以一起用，也可以分开单独用。<br />
+OpenStack 除了有 Rackspace 和 NASA 的大力支持外，还有包括 Dell、Citrix、Cisco、Canonical 等重量级公司的贡献和支持，发展速度非常快。</p>
+
+<h1 id="2-历史版本信息">2 历史版本信息</h1>
+
+<p>OpenStack 的核心组件是计算、网络和存储，是为了简化资源的管理和分配，把资源划分为三个比较大的资源池，
+对外通过 API 进行交互，OpenStack 类似于一个开源的 AWS，有很多功能和 API 和 AWS 是相同的，
+因为 AWS 底层也是使用的 KVM 虚拟化，当前最新的是 N 版，每半年更新一次新版本，已经从 A-N，
+从 G 版以后国内的使用用户越来越多，以下是历史版本更新时间：</p>
+
+<p><img src="http://jaminzhang.github.io/images/OpenStack/OpenStack-Release-History.png" alt="OpenStack-Release-History" /></p>
+
+<h1 id="3-各组件功能">3 各组件功能</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>服务名称</th>
+      <th>项目名称</th>
+      <th>详细描述</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>dashboard</td>
+      <td>Horizon</td>
+      <td>基于 OpenStack API 接口使用 Django 开发的 Web 管理服务</td>
+    </tr>
+    <tr>
+      <td>compute</td>
+      <td>Nova</td>
+      <td>通过虚拟化技术提供虚拟机计算资源池</td>
+    </tr>
+    <tr>
+      <td>networking</td>
+      <td>Neutron</td>
+      <td>实现了虚拟机的网络资源管理，即虚拟机网络</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><strong>storage 存储</strong></td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>object storage</td>
+      <td>Swift</td>
+      <td>对象存储，适用于一次写入多次读取。如图片/ISO 镜像</td>
+    </tr>
+    <tr>
+      <td>block storage</td>
+      <td>Cinder</td>
+      <td>块存储，提供存储资源池，保存虚拟机的磁盘镜像等信息</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><strong>shared service 共享服务</strong></td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>identity service</td>
+      <td>Keystone</td>
+      <td>提供账户登录安全认证</td>
+    </tr>
+    <tr>
+      <td>image servicre</td>
+      <td>Glance</td>
+      <td>提供虚拟机镜像的注册和存储管理</td>
+    </tr>
+    <tr>
+      <td>telemetry</td>
+      <td>Ceilometer</td>
+      <td>提供监控和数据采集、计量服务</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td><strong>higher-level-service 高层服务</strong></td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>orchestraorchestration</td>
+      <td>Heat</td>
+      <td>自动化组件的部署</td>
+    </tr>
+    <tr>
+      <td>database service</td>
+      <td>Trove</td>
+      <td>提供数据库应用服务</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>OpenStack 通过 Nova 调用 KVM/XEN/VMware 等虚拟化技术创建虚拟机，即 OpenStack 是一个管理平台框架，<br />
+支持众多的虚拟化管理，Cinder 存储支持 GlusterFS、iSCSI、MFS 等存储技术给虚拟机使用，<br />
+即 OpenStack 不会绑定某一个应用，而是兼容众多的相关技术，因此火的一塌糊涂！</p>
+
+<h1 id="ref">Ref</h1>
+
+<p><a href="https://en.wikipedia.org/wiki/OpenStack">OpenStack Wikipedia</a><br />
+<a href="http://docs.openstack.org/mitaka/zh_CN/install-guide-rdo/index.html">OpenStack Installation Guide for Red Hat Enterprise Linux and CentOS</a>  <br />
+<a href="https://www.studylinux.net/?p=2881">Openstack之一:环境准备及基础服务</a><br />
+<a href="http://mp.weixin.qq.com/s?srcid=1108ZATkVHdI6vDMtFySyWWY&amp;scene=23&amp;mid=403471227&amp;sn=d645ec0df174e05384bbff40aada4cff&amp;idx=1&amp;__biz=MzIwMTM5MjUwMg%3D%3D&amp;chksm=0b1673623c61fa74f005312b9ed1713a5134c26b448cc46e6903964d7c54810d0d17b656d211&amp;mpshare=1#rd">《每天5分钟玩转 OpenStack》教程目录</a></p>
+:ET

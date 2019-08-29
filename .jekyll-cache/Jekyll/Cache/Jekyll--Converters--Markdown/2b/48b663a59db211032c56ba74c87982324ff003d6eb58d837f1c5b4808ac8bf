@@ -1,0 +1,251 @@
+I"�;<h1 id="通过-restful-api-调用-saltstack">通过 RESTful API 调用 SaltStack</h1>
+
+<p>当我们需要在其他机器或者通过第三方调用 SaltStack 时，通过 SaltStack Python API 可能就不是那么方便了，这个时候我们可以使用 SaltStack 提供的基于 RESTful 风格的 HTTP 的 API。这里需要注意的是 SaltStack 的 API 模块并不是 SaltStack 内置的，而是另外一个独立的模块，需要单独安装并部署。</p>
+
+<h1 id="restful-api-配置环境部署">RESTful API 配置环境部署</h1>
+
+<p>SaltStack 的 API 是在 Master 和 Minion 之外的一个独立的服务，所以需要独立部署，API 服务需要部署在 Master 服务器上。</p>
+
+<h2 id="1-部署-salt-api-服务">1 部署 Salt-API 服务</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 环境准备，建议对 salt-api 使用 HTTPS，生成签名证书，这里我们通过 salt 的模块生成</span>
+<span class="o">[</span>root@linux-node1 ~]# yum <span class="nb">install </span>gcc make python-devel libffi-devel <span class="nt">-y</span>
+<span class="o">[</span>root@linux-node1 ~]# pip <span class="nb">install </span>PyOpenSSL
+
+<span class="c"># 生成证书</span>
+<span class="o">[</span>root@linux-node1 ~]# salt-call tls.create_self_signed_cert
+<span class="nb">local</span>:
+    Created Private Key: <span class="s2">"/etc/pki/tls/certs/localhost.key."</span> Created Certificate: <span class="s2">"/etc/pki/tls/certs/localhost.crt."</span>
+
+<span class="c"># 安装 CherryPy</span>
+pip <span class="nb">install</span> <span class="nt">--upgrade</span> pip
+pip <span class="nb">install </span><span class="nv">CherryPy</span><span class="o">==</span>3.2.6 <span class="o">(</span>yum <span class="nb">install </span>python-cherrypy<span class="o">)</span>
+
+<span class="c"># 安装 salt-api</span>
+yum <span class="nb">install </span>salt-api <span class="nt">-y</span>
+
+</code></pre></div></div>
+
+<h2 id="2-配置用户及权限">2 配置用户及权限</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vim /etc/salt/master.d/eauth.conf
+external_auth:
+  pam:
+    saltapi:
+      - .<span class="k">*</span>
+      - <span class="s1">'@wheel'</span>
+      - <span class="s1">'@runner'</span>
+
+<span class="c"># 添加用户</span>
+useradd <span class="nt">-M</span> <span class="nt">-s</span> /sbin/nologin saltapi
+<span class="nb">echo</span> <span class="s2">"saltapi"</span> | passwd saltapi <span class="nt">--stdin</span>
+</code></pre></div></div>
+
+<h2 id="3-配置-salt-api-服务">3 配置 salt-api 服务</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vim /etc/salt/master.d/api.conf
+rest_cherrypy:
+  host: 192.168.56.11
+  port: 8000
+  ssl_crt: /etc/pki/tls/certs/localhost.crt
+  ssl_key: /etc/pki/tls/certs/localhost.key
+</code></pre></div></div>
+
+<h2 id="4-启动服务">4 启动服务</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl restart salt-master
+systemctl start salt-api
+netstat <span class="nt">-lnpt</span> | <span class="nb">grep </span>8000
+</code></pre></div></div>
+
+<h2 id="5-测试">5 测试</h2>
+
+<p>使用 curl 模仿一个请求，来测试 API 服务是否正常。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@linux-node1 salt]# curl <span class="nt">-k</span> https://192.168.56.11:8000/login <span class="se">\</span>
+<span class="o">&gt;</span> <span class="nt">-H</span> <span class="s1">'Accept: application/x-yaml'</span> <span class="se">\</span>
+<span class="o">&gt;</span> <span class="nt">-d</span> <span class="nv">username</span><span class="o">=</span><span class="s1">'saltapi'</span> <span class="se">\</span>
+<span class="o">&gt;</span> <span class="nt">-d</span> <span class="nv">password</span><span class="o">=</span><span class="s1">'saltapi'</span> <span class="se">\</span>
+<span class="o">&gt;</span> <span class="nt">-d</span> <span class="nv">eauth</span><span class="o">=</span><span class="s1">'pam'</span>
+<span class="k">return</span>:
+- eauth: pam
+  expire: 1470176855.47513
+  perms:
+  - .<span class="k">*</span>
+  - <span class="s1">'@wheel'</span>
+  - <span class="s1">'@runner'</span>
+  start: 1470133655.475129
+  token: 2b98c3ad28cc52d31c1d7b38a4ffe67814b9afdf		<span class="c"># 认证成功后获得的令牌</span>
+  user: saltapi
+
+  
+curl <span class="nt">-k</span> https://192.168.56.11:8000/minions/ <span class="se">\</span>
+<span class="nt">-H</span> <span class="s1">'Accept: application/x-yaml'</span> <span class="se">\</span>
+<span class="nt">-H</span> <span class="s1">'X-Auth-Token: 2b98c3ad28cc52d31c1d7b38a4ffe67814b9afdf'</span>
+<span class="k">return</span>:
+- linux-node1.example.com:
+    SSDs: <span class="o">[]</span>
+    biosreleasedate: 07/02/2015
+    biosversion: <span class="s1">'6.00'</span>
+    cloud: openstack
+... 省略很多行 ...
+    username: root
+    uuid: 564dcbfc-e24a-a02d-f0f2-7698d8bfc016
+    virtual: VMWare
+    zmqversion: 4.0.5  
+</code></pre></div></div>
+
+<p>上面各项测试正常。</p>
+
+<h1 id="通过-restful-api-实现日常操作">通过 RESTful API 实现日常操作</h1>
+
+<h2 id="1-运行远程模块">1 运行远程模块</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-sk</span> https://192.168.56.11:8000/ <span class="se">\</span>
+<span class="nt">-H</span> <span class="s1">'Accept: application/json'</span> <span class="se">\	</span>		<span class="c"># 返回信息格式，默认 json，也推荐 json (兼容性强)</span>
+<span class="nt">-H</span> <span class="s1">'X-Auth-Token: 2b98c3ad28cc52d31c1d7b38a4ffe67814b9afdf'</span> <span class="se">\	</span>	<span class="c"># 通过用户名密码获取的令牌</span>
+<span class="nt">-d</span> <span class="nv">client</span><span class="o">=</span><span class="s1">'local'</span> <span class="se">\	</span>	<span class="c"># 调用底层 salt 模块</span>
+<span class="nt">-d</span> <span class="nv">tgt</span><span class="o">=</span><span class="s1">'*'</span> <span class="se">\</span>
+<span class="nt">-d</span> <span class="nv">fun</span><span class="o">=</span><span class="s1">'test.ping'</span> <span class="se">\ </span>	<span class="c"># 执行函数</span>
+| python <span class="nt">-mjson</span>.tool	<span class="c"># json 格式化输出</span>
+
+
+<span class="c"># 以上命令无注释整理如下：</span>
+curl <span class="nt">-sk</span> https://192.168.56.11:8000/ <span class="se">\</span>
+<span class="nt">-H</span> <span class="s1">'Accept: application/json'</span> <span class="se">\</span>
+<span class="nt">-H</span> <span class="s1">'X-Auth-Token: 2b98c3ad28cc52d31c1d7b38a4ffe67814b9afdf'</span> <span class="se">\</span>
+<span class="nt">-d</span> <span class="nv">client</span><span class="o">=</span><span class="s1">'local'</span> <span class="se">\</span>
+<span class="nt">-d</span> <span class="nv">tgt</span><span class="o">=</span><span class="s1">'*'</span> <span class="se">\</span>
+<span class="nt">-d</span> <span class="nv">fun</span><span class="o">=</span><span class="s1">'test.ping'</span> <span class="se">\</span>
+| python <span class="nt">-mjson</span>.tool
+<span class="o">{</span>
+    <span class="s2">"return"</span>: <span class="o">[</span>
+        <span class="o">{</span>
+            <span class="s2">"linux-node1.example.com"</span>: <span class="nb">true</span>,
+            <span class="s2">"linux-node2.example.com"</span>: <span class="nb">true</span>
+        <span class="o">}</span>
+    <span class="o">]</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h2 id="2-查询指定-job">2 查询指定 job</h2>
+
+<p>我们一般在其他地方调用  salt-api 或者通过第三方调用时，很少会直接同步等待 salt 的返回；<br />
+一般情况下我们会使用 salt 的异步模块来执行命令获取一个返回的 jid,然后通过这个 jid 来获取任务的详细信息。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 获取任务列表如下：</span>
+curl <span class="nt">-sk</span> https://192.168.56.11:8000/jobs <span class="se">\</span>
+<span class="nt">-H</span> <span class="s1">'X-Auth-Token: 2b98c3ad28cc52d31c1d7b38a4ffe67814b9afdf'</span> <span class="se">\</span>
+| python <span class="nt">-mjson</span>.tool
+<span class="o">{</span>
+    <span class="s2">"return"</span>: <span class="o">[</span>
+        <span class="o">{</span>
+            <span class="s2">"20160801185947525506"</span>: <span class="o">{</span>
+                <span class="s2">"Arguments"</span>: <span class="o">[]</span>,
+                <span class="s2">"Function"</span>: <span class="s2">"test.ping"</span>,
+                <span class="s2">"StartTime"</span>: <span class="s2">"2016, Aug 01 18:59:47.525506"</span>,
+                <span class="s2">"Target"</span>: <span class="s2">"*"</span>,
+                <span class="s2">"Target-type"</span>: <span class="s2">"glob"</span>,
+                <span class="s2">"User"</span>: <span class="s2">"root"</span>
+            <span class="o">}</span>,
+            <span class="s2">"20160801185952596386"</span>: <span class="o">{</span>
+                <span class="s2">"Arguments"</span>: <span class="o">[</span>
+                    <span class="s2">"20160801185947525506"</span>
+                <span class="o">]</span>,
+                <span class="s2">"Function"</span>: <span class="s2">"saltutil.find_job"</span>,
+                <span class="s2">"StartTime"</span>: <span class="s2">"2016, Aug 01 18:59:52.596386"</span>,
+                <span class="s2">"Target"</span>: <span class="s2">"*"</span>,
+                <span class="s2">"Target-type"</span>: <span class="s2">"glob"</span>,
+                <span class="s2">"User"</span>: <span class="s2">"root"</span>
+... 省略很多行 ...
+            <span class="s2">"20160802184323260003"</span>: <span class="o">{</span>
+                <span class="s2">"Arguments"</span>: <span class="o">[]</span>,
+                <span class="s2">"Function"</span>: <span class="s2">"test.ping"</span>,
+                <span class="s2">"StartTime"</span>: <span class="s2">"2016, Aug 02 18:43:23.260003"</span>,
+                <span class="s2">"Target"</span>: <span class="s2">"*"</span>,
+                <span class="s2">"Target-type"</span>: <span class="s2">"glob"</span>,
+                <span class="s2">"User"</span>: <span class="s2">"saltapi"</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">]</span>
+<span class="o">}</span>
+
+<span class="c"># 获取 jid 后，即可获取到该任务的详细情况，如下：</span>
+curl <span class="nt">-sk</span> https://192.168.56.11:8000/jobs/20160802184323260003 <span class="se">\</span>
+<span class="nt">-H</span> <span class="s1">'X-Auth-Token: 2b98c3ad28cc52d31c1d7b38a4ffe67814b9afdf'</span> <span class="se">\</span>
+| python <span class="nt">-mjson</span>.tool
+<span class="o">{</span>
+    <span class="s2">"info"</span>: <span class="o">[</span>
+        <span class="o">{</span>
+            <span class="s2">"Arguments"</span>: <span class="o">[]</span>,
+            <span class="s2">"Function"</span>: <span class="s2">"test.ping"</span>,
+            <span class="s2">"Minions"</span>: <span class="o">[</span>
+                <span class="s2">"linux-node1.example.com"</span>,
+                <span class="s2">"linux-node2.example.com"</span>
+            <span class="o">]</span>,
+            <span class="s2">"Result"</span>: <span class="o">{</span>
+                <span class="s2">"linux-node1.example.com"</span>: <span class="o">{</span>
+                    <span class="s2">"return"</span>: <span class="nb">true</span>
+                <span class="o">}</span>,
+                <span class="s2">"linux-node2.example.com"</span>: <span class="o">{</span>
+                    <span class="s2">"return"</span>: <span class="nb">true</span>
+                <span class="o">}</span>
+            <span class="o">}</span>,
+            <span class="s2">"StartTime"</span>: <span class="s2">"2016, Aug 02 18:43:23.260003"</span>,
+            <span class="s2">"Target"</span>: <span class="s2">"*"</span>,
+            <span class="s2">"Target-type"</span>: <span class="s2">"glob"</span>,
+            <span class="s2">"User"</span>: <span class="s2">"saltapi"</span>,
+            <span class="s2">"jid"</span>: <span class="s2">"20160802184323260003"</span>
+        <span class="o">}</span>
+    <span class="o">]</span>,
+    <span class="s2">"return"</span>: <span class="o">[</span>
+        <span class="o">{</span>
+            <span class="s2">"linux-node1.example.com"</span>: <span class="nb">true</span>,
+            <span class="s2">"linux-node2.example.com"</span>: <span class="nb">true</span>
+        <span class="o">}</span>
+    <span class="o">]</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<h2 id="3-运行-runner">3 运行 Runner</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-sk</span> https://192.168.56.11:8000/ <span class="se">\</span>
+<span class="nt">-H</span> <span class="s1">'X-Auth-Token: 2b98c3ad28cc52d31c1d7b38a4ffe67814b9afdf'</span> <span class="se">\</span>
+<span class="nt">-d</span> <span class="nv">client</span><span class="o">=</span><span class="s2">"runner"</span> <span class="se">\</span>
+<span class="nt">-d</span> <span class="nv">fun</span><span class="o">=</span><span class="s2">"manage.status"</span> <span class="se">\</span>
+| python <span class="nt">-mjson</span>.tool
+<span class="o">{</span>
+    <span class="s2">"return"</span>: <span class="o">[</span>
+        <span class="o">{</span>
+            <span class="s2">"down"</span>: <span class="o">[]</span>,
+            <span class="s2">"up"</span>: <span class="o">[</span>
+                <span class="s2">"linux-node1.example.com"</span>,
+                <span class="s2">"linux-node2.example.com"</span>
+            <span class="o">]</span>
+        <span class="o">}</span>
+    <span class="o">]</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>调用其他模块时，只需要将 client 的参数换成对应的参数即可。</p>
+
+<h1 id="开源-saltstack-dashboard">开源 SaltStack Dashboard</h1>
+
+<p><a href="https://github.com/yueyongyue/saltshaker">saltshaker</a><br />
+<a href="https://github.com/binbin91/oms">OMS运维管理平台</a></p>
+
+<h1 id="遇到的问题">遇到的问题</h1>
+
+<p>curl 测试时提示：
+401 Unauthorized<br />
+Could not authenticate using provided credentials</p>
+
+<p>先检查了 eauth.conf 配置文件及语法，确认没有错误，然后发现漏掉了创建 saltapi 用户和设置其密码</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://docs.saltstack.com/en/latest/ref/netapi/all/salt.netapi.rest_cherrypy.html">REST_CHERRYPY</a><br />
+<a href="https://www.xiaomastack.com/2014/11/18/salt-api/">配置管理(3) salt-api安装、配置、使用</a></p>
+
+:ET

@@ -1,0 +1,78 @@
+I"<h1 id="引言">引言</h1>
+
+<p>刚才接到某台服务器的磁盘占用空间报警，根据经验，我猜测是<code class="highlighter-rouge">/var/</code>目录占用空间过大。<br />
+于是登录服务器，果然，确认了是<code class="highlighter-rouge">/var/spool/postfix/maildrop</code>目录占用较大空间，里面有大量小文件。<br />
+下面排查下原因。很多人遇到了这个问题，是 cron 引起的。</p>
+
+<h1 id="cron-原理">cron 原理</h1>
+
+<pre>
+
+Cron searches /var/spool/cron for crontab files which are named after accounts in /etc/passwd; 
+The founded crontabs are loaded into memory.  
+Cron also searches for /etc/anacrontab and the files in the /etc/cron.d directory, 
+which are in a different format (see crontab(5) ).  
+Cron examines all stored crontabs, checking each command to see if it should be run in the current minute.  
+When executing commands, any output is mailed to the owner of the crontab 
+(or to the user named in the MAILTO environment variable in the crontab, if such exists).  
+Job output can also be sent to syslog by using the -s option.
+
+</pre>
+
+<h1 id="原因分析">原因分析</h1>
+
+<pre>
+
+由于 Linux 在执行 cron 时，会将 Cron 执行脚本中的 output 和 warning 信息以邮件的形式发送 Cron 所有者， 
+而由于服务器上的 sendmail 或 postfix 没有正常运行，导致邮件发送不成功，全部小文件堆积在了 maildrop 目录下面，
+而且没有自动清理转换的机制，经历较长时间后，此目录已堆积了大量的小文件。
+查看 man cron 的信息，可以知道会发送给 cron owner.
+（注意：如果 sendmail 或者 postfix 正常运行，则会在/ var/mail 目录下产生大量的邮件，也会堆积)
+
+</pre>
+
+<p>以下为<code class="highlighter-rouge">/var/spool/postfix/maildrop</code>目录下某个邮件首部的内容（里面发件人就是 from root Cron Daemon）：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@xxx_game maildrop]# postcat <span class="nt">-q</span> B5F89264241 | <span class="nb">head</span> <span class="nt">-19</span>
+postcat: warning: inet_protocols: IPv6 support is disabled: Address family not supported by protocol
+postcat: warning: inet_protocols: configuring <span class="k">for </span>IPv4 support only
+<span class="k">***</span> ENVELOPE RECORDS maildrop/B5F89264241 <span class="k">***</span>
+message_arrival_time: Fri Apr 29 08:37:01 2016
+named_attribute: <span class="nv">rewrite_context</span><span class="o">=</span><span class="nb">local
+</span>sender_fullname: CronDaemon
+sender: root
+<span class="k">***</span> MESSAGE CONTENTS maildrop/B5F89264241 <span class="k">***</span>
+From: root <span class="o">(</span>Cron Daemon<span class="o">)</span>
+To: root
+Subject: Cron &lt;root@xxx_game&gt; /usr/bin/python /usr/local/sbin/xxx.py
+Content-Type: text/plain<span class="p">;</span> <span class="nv">charset</span><span class="o">=</span>ANSI_X3.4-1968
+Auto-Submitted: auto-generated
+X-Cron-Env: &lt;<span class="nv">LC_ALL</span><span class="o">=</span>C&gt;
+X-Cron-Env: &lt;<span class="nv">LANG</span><span class="o">=</span>en_US.UTF-8&gt;
+X-Cron-Env: &lt;<span class="nv">SHELL</span><span class="o">=</span>/bin/sh&gt;
+X-Cron-Env: &lt;<span class="nv">HOME</span><span class="o">=</span>/root&gt;
+X-Cron-Env: &lt;<span class="nv">PATH</span><span class="o">=</span>/usr/bin:/bin&gt;
+X-Cron-Env: &lt;<span class="nv">LOGNAME</span><span class="o">=</span>root&gt;
+X-Cron-Env: &lt;<span class="nv">USER</span><span class="o">=</span>root&gt;
+
+</code></pre></div></div>
+
+<h1 id="解决方案">解决方案</h1>
+
+<p>在 crontab 的第一行加入 MAILTO=”“便可，这样执行当前用户的 cron时，不会发送邮件。<br />
+修改命令：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nb">sed</span> <span class="nt">-i</span> <span class="s1">'1 i\MAILTO=""'</span> /var/spool/cron/root
+
+</code></pre></div></div>
+
+<p>上面这种方法是治标，如果想治本，就把对应 cron 的中执行脚本的 output 重定向到文件或<code class="highlighter-rouge">/dev/null</code>中。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://blog.chinaunix.net/uid-26364035-id-3163574.html">Linux 中/var/spool/postfix/maildrop 目录下堆积大量小文件</a><br />
+<a href="http://bing2010.blog.51cto.com/1822459/1080074">/var/spool/postfix/maildrop/ 中有大量的文件</a><br />
+<a href="http://51tech.blog.51cto.com/615380/340946">postfix 管理邮件队列</a></p>
+
+:ET

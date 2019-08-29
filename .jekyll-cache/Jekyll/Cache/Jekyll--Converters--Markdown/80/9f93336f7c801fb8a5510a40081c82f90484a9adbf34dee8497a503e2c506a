@@ -1,0 +1,390 @@
+I"�L<h1 id="生产上的-docker-镜像构建">生产上的 Docker 镜像构建</h1>
+
+<p>在生产环境中实际进行镜像构建时，我们需要仔细结合业务考虑，下面从一个通用的角度来看看生产环境上的镜像可以怎样构建。</p>
+
+<h2 id="规划">规划</h2>
+
+<p>根据架构来进行镜像分层设计：</p>
+
+<ul>
+  <li>应用服务层(Application Level)</li>
+  <li>运行环境层(Runtime Level)</li>
+  <li>操作系统层(OS Level)</li>
+</ul>
+
+<p>创建如下目录结构</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 docker]# tree
+<span class="nb">.</span>
+├── app
+│   ├── xxx-admin
+│   └── xxx-api
+├── runtime
+│   ├── java
+│   ├── php
+│   └── python
+└── system
+    ├── centos
+    ├── centos-ssh
+    └── ubuntu
+
+</code></pre></div></div>
+
+<h2 id="实施构建">实施构建</h2>
+
+<h3 id="构建-centos-基础系统镜像">构建 centos 基础系统镜像</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 下载阿里的 EPEL repo 文件</span>
+<span class="o">[</span>root@linux-node1 centos]# wget http://mirrors.aliyun.com/repo/epel-7.repo
+
+<span class="c"># 编写 centos 基础系统镜像构建 Dockerfile</span>
+<span class="o">[</span>root@linux-node1 centos]# vim Dockerfile 
+<span class="c"># Dockerfile for CentOS</span>
+
+<span class="c"># Base image</span>
+FROM centos
+
+<span class="c"># Maintainer</span>
+MAINTAINER Jamin Zhang zhangjamin@163.com
+
+<span class="c"># Config EPEL</span>
+ADD epel.repo /etc/yum.repos.d/
+
+<span class="c"># Base pkgs</span>
+RUN yum <span class="nb">install</span> <span class="nt">-y</span> wget mysql-devel supervisor git redis tree net-tools <span class="nb">sudo </span>psmisc <span class="o">&amp;&amp;</span> yum clean all
+
+<span class="c"># 执行构建</span>
+<span class="o">[</span>root@linux-node1 centos]# docker build <span class="nt">-t</span> jaminzhang/centos:base <span class="nb">.</span>
+Sending build context to Docker daemon 4.096 kB
+Step 1 : FROM centos
+ <span class="nt">---</span><span class="o">&gt;</span> 980e0e4c79ec
+Step 2 : MAINTAINER Jamin Zhang zhangjamin@163.com
+ <span class="nt">---</span><span class="o">&gt;</span> Using cache
+ <span class="nt">---</span><span class="o">&gt;</span> 6a7aa317f098
+Step 3 : ADD epel.repo /etc/yum.repos.d/
+ <span class="nt">---</span><span class="o">&gt;</span> 31739d51fe47
+Removing intermediate container 499f0617a99d
+Step 4 : RUN yum <span class="nb">install</span> <span class="nt">-y</span> wget mysql-devel supervisor git redis tree net-tools <span class="nb">sudo </span>psmisc <span class="o">&amp;&amp;</span> yum clean all
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>2d126394fcc2
+Loaded plugins: fastestmirror, ovl
+...此处内容省略...
+Complete!
+Loaded plugins: fastestmirror, ovl
+Cleaning repos: base epel extras updates
+Cleaning up everything
+Cleaning up list of fastest mirrors
+ <span class="nt">---</span><span class="o">&gt;</span> b0cfe8ee533b
+Removing intermediate container 87d1affab0ed
+Successfully built b0cfe8ee533b
+
+<span class="c"># 查看镜像</span>
+<span class="o">[</span>root@linux-node1 centos]# docker images
+REPOSITORY                  TAG                 IMAGE ID            CREATED             SIZE
+jaminzhang/centos           base                b0cfe8ee533b        47 seconds ago      283.3 MB
+...此处内容省略...
+
+</code></pre></div></div>
+
+<h3 id="构建带-ssh-服务的-centos-基础系统镜像">构建带 SSH 服务的 centos 基础系统镜像</h3>
+
+<p>基于上面的 Dockerfile，只需要 yum 安装上 openssh 相关软件包，还有加上 SSH 服务的配置</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 centos-ssh]# <span class="nb">cat </span>Dockerfile 
+<span class="c"># Dockerfile for CentOS</span>
+
+<span class="c"># Base image</span>
+FROM centos
+
+<span class="c"># Maintainer</span>
+MAINTAINER Jamin Zhang zhangjamin@163.com
+
+<span class="c"># Config EPEL</span>
+ADD epel.repo /etc/yum.repos.d/
+
+<span class="c"># Base pkgs</span>
+RUN yum <span class="nb">install</span> <span class="nt">-y</span> openssh-clients openssl-devel openssh-server wget mysql-devel supervisor git redis tree net-tools <span class="nb">sudo </span>psmisc <span class="o">&amp;&amp;</span> yum clean all
+
+<span class="c"># Config SSH</span>
+RUN ssh-keygen <span class="nt">-t</span> rsa <span class="nt">-f</span> /etc/ssh/ssh_host_rsa_key
+RUN ssh-keygen <span class="nt">-t</span> ecdsa <span class="nt">-f</span> /etc/ssh/ssh_host_ecdsa_key
+RUN <span class="nb">echo</span> <span class="s2">"root:jaminzhang"</span> | chpasswd
+
+</code></pre></div></div>
+
+<h3 id="构建-python-运行环境镜像">构建 Python 运行环境镜像</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 docker]# <span class="nb">cd </span>runtime/python/
+
+<span class="c"># 编写 Dockerfile</span>
+<span class="o">[</span>root@linux-node1 python]# vim Dockerfile
+<span class="c"># Dockerfile for Python Runtime</span>
+
+<span class="c"># Base image</span>
+FROM jaminzhang/centos:base
+
+<span class="c"># Maintainer</span>
+MAINTAINER Jamin Zhang zhangjamin@163.com
+
+<span class="c"># Python Env</span>
+RUN yum <span class="nb">install</span> <span class="nt">-y</span> python-devel python-pip supervisor
+
+<span class="c"># Upgrade pip</span>
+RUN pip <span class="nb">install</span> <span class="nt">--upgrade</span> pip
+
+<span class="c"># 执行构建</span>
+root@linux-node1 python]# docker build <span class="nt">-t</span> jaminzhang/centos-python <span class="nb">.</span>
+Sending build context to Docker daemon 2.048 kB
+Step 1 : FROM jaminzhang/centos:base
+ <span class="nt">---</span><span class="o">&gt;</span> b0cfe8ee533b
+Step 2 : MAINTAINER Jamin Zhang zhangjamin@163.com
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>c475c9ea8590
+ <span class="nt">---</span><span class="o">&gt;</span> 959ca1b56c2b
+Removing intermediate container c475c9ea8590
+Step 3 : RUN yum <span class="nb">install</span> <span class="nt">-y</span> python-devel python-pip supervisor
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>5489d50d3f75
+Loaded plugins: fastestmirror, ovl
+...此处内容省略...
+Complete!
+ <span class="nt">---</span><span class="o">&gt;</span> 81221403ea32
+Removing intermediate container 5489d50d3f75
+Step 4 : RUN pip <span class="nb">install</span> <span class="nt">--upgrade</span> pip
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>4e5fdf04b2c8
+You are using pip version 7.1.0, however version 8.1.2 is available.
+You should consider upgrading via the <span class="s1">'pip install --upgrade pip'</span> command.
+...此处内容省略...
+Successfully installed pip-8.1.2
+ <span class="nt">---</span><span class="o">&gt;</span> f2c8f1bade0f
+Removing intermediate container 4e5fdf04b2c8
+Successfully built f2c8f1bade0f
+
+<span class="c"># 查看镜像</span>
+<span class="o">[</span>root@linux-node1 python]# docker images
+REPOSITORY                  TAG                 IMAGE ID            CREATED             SIZE
+jaminzhang/centos-python    latest              f2c8f1bade0f        32 seconds ago      453.8 MB
+jaminzhang/centos-ssh       base                40af0c56e966        11 minutes ago      284.3 MB
+jaminzhang/centos           base                b0cfe8ee533b        20 minutes ago      283.3 MB
+...此处内容省略...
+</code></pre></div></div>
+
+<h3 id="构建带-ssh-服务-的-python-运行环境镜像">构建带 SSH 服务 的 Python 运行环境镜像</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 基于 centos-ssh 镜像构建</span>
+<span class="o">[</span>root@linux-node1 runtime]# <span class="nb">cd </span>python-ssh
+<span class="o">[</span>root@linux-node1 python-ssh]# vim Dockerfile
+<span class="c"># Dockerfile for Python Runtime include SSHD</span>
+
+<span class="c"># Base image</span>
+FROM jaminzhang/centos-ssh:base
+
+<span class="c"># Maintainer</span>
+MAINTAINER Jamin Zhang zhangjamin@163.com
+
+<span class="c"># Python Env</span>
+RUN yum <span class="nb">install</span> <span class="nt">-y</span> python-devel python-pip supervisor
+
+<span class="c"># Upgrade pip</span>
+RUN pip <span class="nb">install</span> <span class="nt">--upgrade</span> pip
+<span class="c"># 构建</span>
+<span class="o">[</span>root@linux-node1 python-ssh]# docker build <span class="nt">-t</span> jaminzhang/python-ssh <span class="nb">.</span>
+Sending build context to Docker daemon 2.048 kB
+Step 1 : FROM jaminzhang/centos-ssh:base
+ <span class="nt">---</span><span class="o">&gt;</span> 40af0c56e966
+Step 2 : MAINTAINER Jamin Zhang zhangjamin@163.com
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>2abc1d904a53
+ <span class="nt">---</span><span class="o">&gt;</span> 6dfc443c173f
+Removing intermediate container 2abc1d904a53
+Step 3 : RUN yum <span class="nb">install</span> <span class="nt">-y</span> python-devel python-pip supervisor
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>b7b70a18db21
+Loaded plugins: fastestmirror, ovl
+...此处内容省略...
+Complete!
+ <span class="nt">---</span><span class="o">&gt;</span> f2a9f09ee6c3
+Removing intermediate container b7b70a18db21
+Step 4 : RUN pip <span class="nb">install</span> <span class="nt">--upgrade</span> pip
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>262206e28bd5
+...此处内容省略...
+    Uninstalling pip-7.1.0:
+      Successfully uninstalled pip-7.1.0
+Successfully installed pip-8.1.2
+ <span class="nt">---</span><span class="o">&gt;</span> 6982a0433dea
+Removing intermediate container 262206e28bd5
+Successfully built 6982a0433dea
+
+<span class="c"># 查看镜像</span>
+<span class="o">[</span>root@linux-node1 ~]# docker images
+REPOSITORY                  TAG                 IMAGE ID            CREATED             SIZE
+jaminzhang/python-ssh       latest              6982a0433dea        52 seconds ago      454.8 MB
+jaminzhang/centos-python    latest              f2c8f1bade0f        About an hour ago   453.8 MB
+jaminzhang/centos-ssh       base                40af0c56e966        About an hour ago   284.3 MB
+jaminzhang/centos           base                b0cfe8ee533b        2 hours ago         283.3 MB
+...此处内容省略...
+
+</code></pre></div></div>
+
+<h3 id="构建基于-python-ssh-镜像的业务镜像">构建基于 python-ssh 镜像的业务镜像</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 创建一个 shop-api 演示项目</span>
+<span class="o">[</span>root@linux-node1 app]# <span class="nb">mkdir </span>shop-api
+<span class="o">[</span>root@linux-node1 app]# <span class="nb">cd </span>shop-api/
+
+<span class="c"># 编写一个 Python Flask 演示项目</span>
+<span class="o">[</span>root@linux-node1 shop-api]# vim app.py
+<span class="o">[</span>root@linux-node1 shop-api]# <span class="nb">cat </span>app.py
+from flask import Flask
+
+app <span class="o">=</span> Flask<span class="o">(</span>__name__<span class="o">)</span>
+
+@app.route<span class="o">(</span><span class="s1">'/'</span><span class="o">)</span>
+def hello<span class="o">()</span>:
+    <span class="k">return</span> <span class="s1">'Hello World!'</span> 
+
+<span class="k">if </span>__name__ <span class="o">==</span> <span class="s2">"__main__"</span>:
+    app.run<span class="o">(</span><span class="nv">host</span><span class="o">=</span><span class="s2">"0.0.0.0"</span>, <span class="nv">debug</span><span class="o">=</span>True<span class="o">)</span>
+
+<span class="c"># 准备 Python requirements 文件</span>
+<span class="o">[</span>root@linux-node1 shop-api]# vim requirements.txt
+flask
+
+<span class="c"># 准备 supervisor 配置文件，我们使用 supervisor 来管理容器中的服务进程，可以做到自动重启</span>
+<span class="o">[</span>root@linux-node1 shop-api]# <span class="nb">cp</span> /etc/supervisord.conf <span class="nb">.</span>
+<span class="nv">nodaemon</span><span class="o">=</span><span class="nb">true</span>	<span class="c"># 容器中开启前台运行</span>
+<span class="o">[</span>root@linux-node1 shop-api]# vim app-supervisor.ini 
+<span class="o">[</span>program:shop-api]
+<span class="nb">command</span><span class="o">=</span>/usr/bin/python2.7 /opt/app.py
+<span class="nv">process_name</span><span class="o">=</span>%<span class="o">(</span>program_name<span class="o">)</span>s
+<span class="nv">autostart</span><span class="o">=</span><span class="nb">true
+</span><span class="nv">user</span><span class="o">=</span>www
+<span class="nv">stdout_logfile</span><span class="o">=</span>/tmp/app.log
+<span class="nv">stderr_logfile</span><span class="o">=</span>/tmp/app.error
+
+<span class="o">[</span>program:sshd]
+<span class="nb">command</span><span class="o">=</span>/usr/sbin/sshd <span class="nt">-D</span>
+<span class="nv">process_name</span><span class="o">=</span>%<span class="o">(</span>program_name<span class="o">)</span>s
+<span class="nv">autostart</span><span class="o">=</span><span class="nb">true</span>
+
+<span class="c"># 编写 Dockerfile</span>
+<span class="o">[</span>root@linux-node1 shop-api]# <span class="nb">cat </span>Dockerfile
+<span class="c"># Dockerfile for shop-api demo project</span>
+
+<span class="c"># Base image</span>
+FROM jaminzhang/python-ssh
+
+<span class="c"># Maintainer</span>
+MAINTAINER Jamin Zhang zhangjamin@163.com
+
+<span class="c"># Python Env</span>
+RUN useradd <span class="nt">-s</span> /sbin/nologin <span class="nt">-M</span> www
+
+<span class="c"># Add file</span>
+ADD app.py /opt/app.py
+ADD requirements.txt /opt/
+ADD supervisord.conf /etc/supervisord.conf
+ADD app-supervisor.ini /etc/supervisord.d/
+
+<span class="c"># Upgrade pip</span>
+RUN /usr/bin/pip2.7 <span class="nb">install</span> <span class="nt">-r</span> /opt/requirements.txt
+
+<span class="c"># Port</span>
+EXPOSE 22 5000
+
+<span class="c"># CMD</span>
+CMD <span class="o">[</span><span class="s2">"/usr/bin/supervisord"</span>,<span class="s2">"-c"</span>,<span class="s2">"/etc/supervisord.conf"</span><span class="o">]</span>
+
+<span class="c"># 项目目录结构</span>
+<span class="o">[</span>root@linux-node1 app]# tree shop-api/
+shop-api/
+├── app.py
+├── app-supervisor.ini
+├── Dockerfile
+├── requirements.txt
+└── supervisord.conf
+
+<span class="c"># 构建</span>
+<span class="o">[</span>root@linux-node1 shop-api]# docker build <span class="nt">-t</span> jaminzhang/shop-api:v1 <span class="nb">.</span>
+Sending build context to Docker daemon 13.82 kB
+Step 1 : FROM jaminzhang/python-ssh
+ <span class="nt">---</span><span class="o">&gt;</span> 6982a0433dea
+Step 2 : MAINTAINER Jamin Zhang zhangjamin@163.com
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>11df9ec88355
+ <span class="nt">---</span><span class="o">&gt;</span> e70557634737
+Removing intermediate container 11df9ec88355
+Step 3 : RUN useradd <span class="nt">-s</span> /sbin/nologin <span class="nt">-M</span> www
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>eddbe1a098ad
+ <span class="nt">---</span><span class="o">&gt;</span> 98a91fcd3fa5
+Removing intermediate container eddbe1a098ad
+Step 4 : ADD app.py /opt/app.py
+ <span class="nt">---</span><span class="o">&gt;</span> 549f2b6817af
+Removing intermediate container bfda4b8598f0
+Step 5 : ADD requirements.txt /opt/
+ <span class="nt">---</span><span class="o">&gt;</span> 53737be5a098
+Removing intermediate container 819b4bb80d44
+Step 6 : ADD supervisord.conf /etc/supervisord.conf
+ <span class="nt">---</span><span class="o">&gt;</span> 6a0b33ab4a16
+Removing intermediate container 48b2b1b72a0c
+Step 7 : ADD app-supervisor.ini /etc/supervisord.d/
+ <span class="nt">---</span><span class="o">&gt;</span> bc1049994316
+Removing intermediate container b416a84e06f5
+Step 8 : RUN /usr/bin/pip2.7 <span class="nb">install</span> <span class="nt">-r</span> /opt/requirements.txt
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>343d55f2e03c
+Collecting flask <span class="o">(</span>from <span class="nt">-r</span> /opt/requirements.txt <span class="o">(</span>line 1<span class="o">))</span>
+...此处内容省略...
+Successfully installed Jinja2-2.8 MarkupSafe-0.23 Werkzeug-0.11.11 click-6.6 flask-0.11.1 itsdangerous-0.24
+ <span class="nt">---</span><span class="o">&gt;</span> 2f5ffb73ad7b
+Removing intermediate container 343d55f2e03c
+Step 9 : EXPOSE 22 5000
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>e7bea8407b95
+ <span class="nt">---</span><span class="o">&gt;</span> 3dff08d8b635
+Removing intermediate container e7bea8407b95
+Step 10 : CMD /usr/bin/supervisord <span class="nt">-c</span> /etc/supervisord.conf
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>b453d2525db1
+ <span class="nt">---</span><span class="o">&gt;</span> 6bd380c9ba47
+Removing intermediate container b453d2525db1
+Successfully built 6bd380c9ba47
+
+<span class="c"># 查看镜像</span>
+<span class="o">[</span>root@linux-node1 shop-api]# docker images
+REPOSITORY                  TAG                 IMAGE ID            CREATED              SIZE
+jaminzhang/shop-api         v1                  6bd380c9ba47        About a minute ago   460 MB
+jaminzhang/python-ssh       latest              6982a0433dea        53 minutes ago       454.8 MB
+jaminzhang/centos-python    latest              f2c8f1bade0f        2 hours ago          453.8 MB
+jaminzhang/centos-ssh       base                40af0c56e966        2 hours ago          284.3 MB
+...此处内容省略...
+
+<span class="c"># 运行容器</span>
+<span class="o">[</span>root@linux-node1 shop-api]# docker run <span class="nt">--name</span> shop-api-v1 <span class="nt">-d</span> <span class="nt">-p</span> 88:5000 <span class="nt">-p</span> 8022:22 jaminzhang/shop-api:v1
+110276d8417759781e7a26f99bb15411bdfddbd59db83d5136be594422e16b2c
+<span class="o">[</span>root@linux-node1 shop-api]# docker port shop-api-v1
+22/tcp -&gt; 0.0.0.0:8022
+5000/tcp -&gt; 0.0.0.0:88
+
+<span class="c"># 访问测试</span>
+<span class="o">[</span>root@linux-node1 shop-api]# curl <span class="s2">"http://192.168.56.11:88/"</span>
+Hello World!
+
+Connecting to 192.168.56.11:8022...
+Connection established.
+To escape to <span class="nb">local </span>shell, press <span class="s1">'Ctrl+Alt+]'</span><span class="nb">.</span>
+
+<span class="o">[</span>root@110276d84177 ~]# w
+ 12:59:23 up 21:33,  1 user,  load average: 0.06, 0.14, 0.12
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+root     pts/0    192.168.56.1     12:59    1.00s  0.00s  0.00s w
+
+</code></pre></div></div>
+
+<blockquote>
+
+  <p>推荐生产环境上使用 supervisor 来管理容器中的多个服务进程。<br />
+PHP/JAVA 环境的项目镜像构建和上面 Python 项目是相同的思路，先在真实主机上安装测试好后再写 Dockerfile。</p>
+</blockquote>
+
+<h1 id="ref">Ref</h1>
+
+<p><a href="https://docs.docker.com/compose/gettingstarted/">Docker Compose</a></p>
+:ET

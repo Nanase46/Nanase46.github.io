@@ -1,0 +1,22 @@
+I";<h1 id="引言">引言</h1>
+
+<p>最近某业务接触 MySQL 的用户权限比较多，主要是配置业务程序使用的数据库用户权限，<br />
+很多权限具体指什么，突然一时有些忘记了（比如 execute），现在我来重新复习学习一下。</p>
+
+<h1 id="mysql-权限管理学习资料">MySQL 权限管理学习资料</h1>
+
+<p>一查，有很多写得比较好的资料，这里我就站在其他人的肩膀上，就不自己另外总结了。</p>
+
+<p><a href="http://blog.chinaunix.net/uid-20639775-id-3249105.html">MySQL 数据库管理之权限管理</a><br />
+<a href="http://wolfchen.blog.51cto.com/2211749/1243990">MySQL 权限体系介绍</a><br />
+<a href="http://dev.mysql.com/doc/refman/5.7/en/privileges-provided.html">7.2.1 Privileges Provided by MySQL</a></p>
+
+<p>学习了上面的资料后，就可以知道 execute 权限是关于什么了。</p>
+
+<blockquote>
+
+  <p>The EXECUTE privilege is required to execute stored routines (procedures and functions).</p>
+</blockquote>
+
+<p>执行存储过程和函数需要 EXECUTE 权限。</p>
+:ET

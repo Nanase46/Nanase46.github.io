@@ -1,0 +1,57 @@
+I"�
+<h1 id="引言">引言</h1>
+
+<p>上一篇文章说的是构建 rpm 包，接下来说说如何构建公司内部 yum 源。</p>
+
+<h2 id="服务端配置">服务端配置</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 1. 创建 yum 仓库目录，rpm 包都上至此目录</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> /application/yum/centos6/x86_64/    
+
+<span class="c"># 2. 安装 createrepo 软件</span>
+yum <span class="nt">-y</span> <span class="nb">install </span>createrepo                    
+
+<span class="c"># 3. 初始化 repodata 索引文件</span>
+createrepo <span class="nt">-pdo</span> /application/yum/centos6/x86_64/ /application/yum/centos6/x86_64/     
+
+<span class="c"># 4. 进入需要提供仓库的目录</span>
+<span class="nb">cd</span> /application/yum/centos6/x86_64/          
+
+<span class="c"># 5. 可以用 Apache 或 Nginx 提供 Web 服务</span>
+<span class="c"># 但用 Python 的 http 模块更简单，适用于内网环境，可以通过浏览器输入本机 IP 查看。</span>
+python <span class="nt">-m</span> SimpleHTTPServer 80 &amp;&gt;/dev/null &amp;  
+
+<span class="c"># 6. 每加入一个 rpm 包就要更新一下</span>
+createrepo –update /application/yum/centos6/x86_64/       
+
+<span class="c"># 修改 yum 配置文件 keepacache=0 改为 1，保存下载过的软件</span>
+<span class="nb">sed</span> <span class="nt">-i</span> ‘s#keepcache<span class="o">=</span>0#keepcache<span class="o">=</span>1#g’ /etc/yum.conf         
+
+</code></pre></div></div>
+
+<h2 id="客户端配置">客户端配置</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nb">cd</span> /etc/yum.repos.d
+
+vi jamin.repo          <span class="c"># 连接本地 yum 源</span>
+repo 文件内容如下：
+<span class="o">[</span>jamin]
+<span class="nv">name</span><span class="o">=</span>Server
+<span class="nv">baseurl</span><span class="o">=</span>http://<span class="nv">$LAN_IP</span>
+<span class="nb">enable</span><span class="o">=</span>1
+<span class="nv">gpgcheck</span><span class="o">=</span>0
+
+yum –-enablerepo<span class="o">=</span>jamin –-disablerepo<span class="o">=</span>base,extras,updates,epel list <span class="c"># 指定使用 jamin 库(临时生效)</span>
+
+</code></pre></div></div>
+
+<h2 id="yum-源同步">yum 源同步</h2>
+
+<p>暂时没做，具体可参考 Ref 中的配置</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://www.xuliangwei.com/xubusi/40.html">自动化部署必备技能—搭建 YUM 仓库</a><br />
+<a href="http://www.centoscn.com/CentOS/config/2014/0525/3020.html">CentOS 下挂载 ISO</a></p>
+:ET

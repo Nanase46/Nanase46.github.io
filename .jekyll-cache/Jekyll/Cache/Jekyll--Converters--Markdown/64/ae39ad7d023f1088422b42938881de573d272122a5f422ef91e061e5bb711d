@@ -1,0 +1,81 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>一个业务压测要进行非正常关机，如何模拟呢？<br />
+这让我首先重新去深入理解 Linux 系统中的几个关机命令（shutdown/halt）。</p>
+
+<h1 id="shutdown">shutdown</h1>
+
+<p>man shutdown:</p>
+
+<pre>
+
+shutdown  
+arranges for the system to be brought down in a safe way.  
+All logged-in users are notified that the system is going down and, 
+within the last five minutes of TIME, new logins are prevented.
+
+</pre>
+
+<p>从上面的说明可以看到，shutdown 是一个安全的正常关机的命令。</p>
+
+<p>以下是来自网友详细一点 shutdown 过程的说明：</p>
+
+<pre>
+
+shutdown -h now will call /etc/rc.d/rc or /etc/init.d/rc. 
+The rc script will call the kill scripts for the new runlevel (0 for -h, 6 for -r), followed by any start scripts.
+
+You'll see S30killprocs or S00killall or something like that depending on your distro. 
+This comes after all the kill scripts have been called to attempt to stop each service gracefully in turn. 
+It will try kill -15 first, followed by kill -9.
+
+Short answer: shutdown -h now or shutdown -r now are graceful. 
+
+</pre>
+
+<h1 id="reboothaltpoweroff">reboot/halt/poweroff</h1>
+
+<p>我们首先要看下这 3 个命令所处路径：</p>
+
+<pre>
+
+[root@Aliyun-BJ-01 ~]# ll /sbin/halt /sbin/reboot /sbin/poweroff
+lrwxrwxrwx. 1 root root     6 Aug 14  2014 /sbin/halt -&gt; reboot
+lrwxrwxrwx. 1 root root     6 Aug 14  2014 /sbin/poweroff -&gt; reboot
+-rwxr-xr-x. 1 root root 14832 Mar 12  2014 /sbin/reboot
+
+</pre>
+
+<p>上面是在 CentOS 系统下，可以看到 halt/poweroff 命令实际是指向 reboot 命令的软链接。<br />
+所以我们<code class="highlighter-rouge">man reboot/man halt/man poweroff</code>会得到相同的结果</p>
+
+<pre>
+
+These programs allow a system administrator to reboot, halt or poweroff the system.
+
+When called with --force or when in runlevel 0 or 6, 
+this tool invokes the reboot(2) system call itself and directly reboots the system.  
+Otherwise this simply invokes the shutdown(8) tool with the appropriate arguments.
+
+-f, --force
+  Does not invoke shutdown(8) and instead performs the actual action you would expect from the name.
+
+</pre>
+
+<p>从上面可以看出不带 -f 选项，则就会调用 shutdown 命令执行正常重启或关机，<br />
+如果带 -f 选项就是强制直接重启或关机，非正常关机应该可以这样模拟。<br />
+群里一朋友说了另一个简单的方法：<code class="highlighter-rouge">kill -9 1</code>，直接强制杀掉 init 进程，这个应该也算是非正常关机。</p>
+
+<h1 id="总结">总结</h1>
+
+<p>模拟非正常关机/重启的方法：</p>
+
+<h2 id="1halt--f--reboot--f">1.halt -f / reboot -f</h2>
+
+<h2 id="2kill--9-1">2.kill -9 1</h2>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://serverfault.com/questions/327758/linux-graceful-shutdown">Linux Graceful Shutdown</a><br />
+<a href="https://linux.cn/blog-15563-5833.html">Linux 关机/重启命令详解</a></p>
+
+:ET

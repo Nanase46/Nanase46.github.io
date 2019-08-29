@@ -1,0 +1,99 @@
+I"�
+<p>Salt 支持一些高可用和容错特性。
+如下：</p>
+
+<ul>
+  <li>Multimaster</li>
+  <li>Multimaster with Failover</li>
+  <li>Syndic</li>
+  <li>Syndic with Multimaster</li>
+</ul>
+
+<p>本文说说 Multimaster，即多 Master 架构。</p>
+
+<h1 id="multimaster-简介">Multimaster 简介</h1>
+
+<pre>
+
+Salt minions can connect to multiple masters at one time by configuring the master configuration parameter as
+a YAML list of all the available masters. By default, all masters are ``hot'', meaning that any master can direct
+commands to the Salt infrastructure.
+
+In a multimaster configuration, each master must have the same cryptographic keys, and minion keys must be
+accepted on all masters separately. The contents of file_roots and pillar_roots need to be kept in sync 
+with processes external to Salt as well.
+
+</pre>
+
+<p>多 Master 架构可以实现高可用，解决单点故障。<br />
+配置多 Master 最重要的是共享 key 和 file_roots/pillar_roots。</p>
+
+<h1 id="multimaster-配置教程">Multimaster 配置教程</h1>
+
+<h2 id="0-配置步骤总结">0 配置步骤总结</h2>
+
+<ul>
+  <li>
+    <ol>
+      <li>创建一个新增的 master 服务器</li>
+    </ol>
+  </li>
+  <li>
+    <ol>
+      <li>复制主 master key 到 新增的 master</li>
+    </ol>
+  </li>
+  <li>
+    <ol>
+      <li>启动新增的 master</li>
+    </ol>
+  </li>
+  <li>
+    <ol>
+      <li>配置 minions 连接到新增的 master</li>
+    </ol>
+  </li>
+  <li>
+    <ol>
+      <li>重启 minions</li>
+    </ol>
+  </li>
+  <li>
+    <ol>
+      <li>在新增的 master 上接受 minions 的 keys</li>
+    </ol>
+  </li>
+</ul>
+
+<h2 id="1-准备一个新增的-master-服务器">1 准备一个新增的 master 服务器</h2>
+
+<p>将主 master 上 /etc/salt/pki/master/ 里面的 master 的公私钥（master.pem、master.pub） 
+复制到新增的 master 同样的目录下，然后启动新增的 master。</p>
+
+<h2 id="2-配置-minions">2 配置 Minions</h2>
+
+<p>在 Minions 的配置文件中 master 参数配置新增的 master，如：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>master:
+  - saltmater1.example.com
+  - saltmater2.example.com
+</code></pre></div></div>
+
+<p>然后重启 Minions</p>
+
+<h2 id="3-在-masters-间共享文件">3 在 Masters 间共享文件</h2>
+
+<p>有如下类型的文件需要共享：</p>
+
+<ul>
+  <li>Minions Keys</li>
+  <li>Files_Roots 推荐使用 gitfs 作为文件服务器来共享 files</li>
+  <li>Pillar_Roots</li>
+  <li>Master Configurations</li>
+</ul>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://docs.saltstack.com/en/latest/topics/highavailability/index.html">HIGH AVAILABILITY FEATURES IN SALT</a><br />
+<a href="https://docs.saltstack.com/en/latest/topics/tutorials/multimaster.html">MULTI MASTER TUTORIAL</a></p>
+
+:ET

@@ -1,0 +1,53 @@
+I"�<p>Masterless 架构（无 Master 的架构）</p>
+
+<h1 id="单独的-minion">单独的 Minion</h1>
+
+<p>由于 Salt minoin 包含如此大量的功能，独立运行 minion 也会很有用。<br />
+一个独立的 minion 可以做许多事情：</p>
+
+<ul>
+  <li>在一个系统上使用 salt-call 命令，不需要连接到 master</li>
+  <li>无 Master 的状态，运行状态，文件完全来自己 minion 本地</li>
+</ul>
+
+<p>注意：
+当运行 Salt 在 masterless 模式时，不要运行 salt-minion 进程。</p>
+
+<h2 id="minion-配置">Minion 配置</h2>
+
+<h2 id="masterless-minion-配置步骤">Masterless Minion 配置步骤</h2>
+
+<h3 id="1-关闭-salt-minion-进程">1. 关闭 Salt Minion 进程</h3>
+
+<blockquote>
+
+  <p>systemctl stop salt-minion</p>
+</blockquote>
+
+<h3 id="2-修改-salt-minion-配置文件">2. 修改 Salt Minion 配置文件</h3>
+
+<p>salt-call 命令会使用 minion 的配置文件</p>
+
+<p>修改 /etc/salt/minion 相关参数如下：</p>
+
+<blockquote>
+
+  <p>file_client: local</p>
+</blockquote>
+
+<p>根据实际情况修改 file_roots、pillar_roots 参数</p>
+
+<h3 id="3-编写-sls">3. 编写 SLS</h3>
+
+<h3 id="4-执行-salt-call">4. 执行 salt-call</h3>
+
+<blockquote>
+
+  <p>salt-call –local state.highstate
+或<br />
+salt-call state.apply –local</p>
+</blockquote>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://docs.saltstack.com/en/latest/topics/tutorials/standalone_minion.html">STANDALONE MINION</a></p>
+:ET

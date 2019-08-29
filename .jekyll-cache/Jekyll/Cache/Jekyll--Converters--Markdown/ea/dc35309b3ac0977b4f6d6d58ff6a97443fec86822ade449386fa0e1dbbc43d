@@ -1,0 +1,83 @@
+I"Z<h1 id="引言">引言</h1>
+
+<p>HTTP 的 GET 和 POST 这两种常用的请求方法经常被拿出来对比。<br />
+今天看了一篇深入理解 HTTP GET 和 POST 方法区别的文章，写得不错。<br />
+现在我们来由浅入深看下它们的区别。</p>
+
+<h1 id="get-与-post-对比">GET 与 POST 对比</h1>
+
+<ul>
+  <li>GET - 从指定的资源请求数据</li>
+  <li>POST - 向指定的资源提交要被处理的数据</li>
+</ul>
+
+<p>以下图表来 w3school</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>GET</th>
+      <th>POST</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>后退按钮/刷新</td>
+      <td>无害</td>
+      <td>数据会被重新提交（浏览器应该告知用户数据会被重新提交）。</td>
+    </tr>
+    <tr>
+      <td>书签</td>
+      <td>可收藏为书签</td>
+      <td>不可收藏为书签</td>
+    </tr>
+    <tr>
+      <td>缓存</td>
+      <td>能被缓存</td>
+      <td>不能缓存</td>
+    </tr>
+    <tr>
+      <td>编码类型</td>
+      <td>application/x-www-form-urlencoded</td>
+      <td>application/x-www-form-urlencoded 或 multipart/form-data。为二进制数据使用多重编码。</td>
+    </tr>
+    <tr>
+      <td>历史</td>
+      <td>参数保留在浏览器历史中。</td>
+      <td>参数不会保存在浏览器历史中。</td>
+    </tr>
+    <tr>
+      <td>对数据长度的限制</td>
+      <td>是的。当发送数据时，GET 方法向 URL 添加数据；URL 的长度是受限制的（URL 的最大长度是 2048 个字符）。</td>
+      <td>无限制。</td>
+    </tr>
+    <tr>
+      <td>对数据类型的限制</td>
+      <td>只允许 ASCII 字符。</td>
+      <td>没有限制。也允许二进制数据。</td>
+    </tr>
+    <tr>
+      <td>安全性</td>
+      <td>与 POST 相比，GET 的安全性较差，因为所发送的数据是 URL 的一部分。在发送密码或其他敏感信息时绝不要使用 GET！</td>
+      <td>POST 比 GET 更安全，因为参数不会被保存在浏览器历史或 Web 服务器日志中。</td>
+    </tr>
+    <tr>
+      <td>可见性</td>
+      <td>数据在 URL 中对所有人都是可见的。</td>
+      <td>数据不会显示在 URL 中。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="get-与-post-深入对比">GET 与 POST 深入对比</h1>
+
+<ul>
+  <li>GET 和 POST 本质上就是 TCP 连接，并无差别。但是由于 HTTP 的规定和浏览器/服务器的限制，导致它们在应用过程中体现出一些不同。</li>
+  <li>GET 和 POST 还有一个重大区别，简单的说：GET 产生一个 TCP 数据包；POST 产生两个 TCP 数据包。（具体说明请参考 Ref 中的文章）</li>
+</ul>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://www.w3school.com.cn/tags/html_ref_httpmethods.asp">HTTP 方法：GET 对比 POST</a><br />
+<a href="http://mp.weixin.qq.com/s?__biz=MzAwNzA0NTMzMQ==&amp;mid=2653202500&amp;idx=1&amp;sn=aecfb32856ef90361f8106377937391e&amp;chksm=80d421f8b7a3a8ee36b8d64f6491e5267c74b32dcdf77fe406c87aa5030e37b5b39f05a9ea4c&amp;mpshare=1&amp;scene=1&amp;srcid=10080iokRiobEfoloCTGfLHz#rd">99% 的人都理解错了 HTTP 中 GET 与 POST 的区别</a></p>
+:ET

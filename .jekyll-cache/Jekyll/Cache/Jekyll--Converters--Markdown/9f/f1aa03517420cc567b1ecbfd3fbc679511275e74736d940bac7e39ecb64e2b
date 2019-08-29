@@ -1,0 +1,43 @@
+I"�	<p>Shell 实现找出两个目录下的同名文件</p>
+
+<h1 id="引言">引言</h1>
+
+<p>Shell 实现找出两个目录下的同名文件</p>
+
+<p>这是一个面试问的关于 Shell 的问题，自己没碰到过这种情况，
+比较考验自己的一个逻辑思考的能力。自己当时有点懵，没思路，没想出来。
+回来后，在服务器上边测试边思考，思路感觉比较容易出来。下面是测试实现过程。</p>
+
+<h1 id="shell-实现找出两个目录下的同名文件思路">Shell 实现找出两个目录下的同名文件思路</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 首先我们来创建一些 2 个目录，里面的目录结构及相关文件如下所示：</span>
+<span class="o">[</span>root@VM_15_187_centos ~]# tree dir1
+dir1
+|-- 00
+|   <span class="sb">`</span><span class="nt">--</span> test.txt
+|-- test00.txt
+<span class="sb">`</span><span class="nt">--</span> test01.txt
+
+1 directory, 3 files
+<span class="o">[</span>root@VM_15_187_centos ~]# tree dir2
+dir2
+|-- 01
+|   <span class="sb">`</span><span class="nt">--</span> test.txt
+|-- test00.txt
+<span class="sb">`</span><span class="nt">--</span> test02.txt
+
+1 directory, 3 files
+
+<span class="c"># 从上面的测试目录可以看到， test.txt test00.txt 两个文件是两个目录下的同名文件</span>
+
+<span class="c"># 有实际例子，思路就容易出来：</span>
+<span class="c"># 1. 使用 for 循环 和 find 结合 awk 命令列出 dir1 目录下的所有文件名</span>
+<span class="c"># 2. 对一个文件名，再传递给 find 命令查找 dir2 目录下是否有这个文件名，如果有，就列出来</span>
+
+<span class="c"># 如下一行命令就可以实现：</span>
+<span class="o">[</span>root@VM_15_187_centos ~]#  <span class="k">for </span>file <span class="k">in</span> <span class="sb">`</span>find dir1 <span class="nt">-type</span> f | <span class="nb">awk</span> <span class="nt">-F</span><span class="s2">"/"</span> <span class="s1">'{print $NF}'</span><span class="sb">`</span><span class="p">;</span> <span class="k">do </span>find dir2 <span class="nt">-type</span> f <span class="nt">-iname</span> <span class="s2">"</span><span class="nv">$file</span><span class="s2">"</span> | <span class="nb">awk</span> <span class="nt">-F</span><span class="s2">"/"</span> <span class="s1">'{print $NF}'</span> <span class="p">;</span> <span class="k">done
+</span>test.txt
+test00.txt
+
+</code></pre></div></div>
+:ET

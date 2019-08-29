@@ -1,0 +1,41 @@
+I"�<h1 id="安装依赖">安装依赖</h1>
+
+<p><code class="highlighter-rouge">yum install -y gcc openssl openssl-devel sqlite-devel xml2 libxml2-devel libxslt libxslt-devel python-pyasn1 libffi-devel python-pyasn1-modules </code></p>
+
+<h1 id="安装-python-3x-和-pip-python-3-自带-pip">安装 Python 3.X 和 PIP (Python 3 自带 PIP)</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+wget https://www.python.org/ftp/python/3.5.3/Python-3.5.3.tgz
+<span class="nb">tar </span>xzvf Python-3.5.3.tgz
+<span class="nb">cd </span>Python-3.5.3
+./configure 
+make
+make <span class="nb">install
+
+</span>python3
+pip3 <span class="nt">--version</span>
+
+</code></pre></div></div>
+
+<h1 id="安装-git-2x">安装 Git 2.X</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c">## 安装依赖(依据实际需求，这里我要使用)</span>
+yum <span class="nb">install </span>libcurl-devel <span class="nt">-y</span>
+yum <span class="nb">install </span>expat-devel perl-ExtUtils-MakeMaker <span class="nt">-y</span>
+
+wget https://www.kernel.org/pub/software/scm/git/git-2.9.5.tar.gz
+<span class="nb">tar </span>xzvf git-2.9.5.tar.gz
+<span class="nb">cd </span>git-2.9.5
+./configure 
+make
+make <span class="nb">install
+
+mv</span> /usr/bin/git /usr/bin/git-1.7    <span class="c"># 备份旧版本 Git </span>
+git <span class="nt">--version</span>   <span class="c"># Git 默认编译安装在 /usr/local/bin/</span>
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://python.freelycode.com/contribution/detail/284">Redhat/Centos/Fedora 下 Python, Pip 和 Git 的安装</a></p>
+:ET

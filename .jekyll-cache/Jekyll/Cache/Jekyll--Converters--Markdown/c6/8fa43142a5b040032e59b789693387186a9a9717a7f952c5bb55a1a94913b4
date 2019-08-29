@@ -1,0 +1,108 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>继之前一篇写到要总结在工作学习中常用的 yum 命令的文章，这次来写写 rpm 命令的常见用法总结（不定期更新到此篇中）。</p>
+
+<h1 id="1-对已安装软件包信息的查询">1 对已安装软件包信息的查询</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 查询所有已安装的软件包      </span>
+       <span class="nt">-a</span>, <span class="nt">--all</span>
+              Query all installed packages.
+<span class="c"># 查询所属文件的软件包，文件名带绝对路径              </span>
+       <span class="nt">-f</span>, <span class="nt">--file</span> FILE
+              Query package owning FILE.
+<span class="c"># 列出软件包中的所有文件安装到何处              </span>
+       <span class="nt">-l</span>, <span class="nt">--list</span>
+              List files <span class="k">in </span>package.
+<span class="c"># 显示软件包信息              </span>
+       <span class="nt">-i</span>, <span class="nt">--info</span>
+              Display package information, including name, version, and description.  
+              This uses the <span class="nt">--queryformat</span> <span class="k">if </span>one was specified.
+<span class="c"># 只列出配置文件（和 -l 起使用）</span>
+       <span class="nt">-c</span>, <span class="nt">--configfiles</span>
+              List only configuration files <span class="o">(</span>implies <span class="nt">-l</span><span class="o">)</span><span class="nb">.</span>
+<span class="c"># 只列出文档文件（和 -l 起使用）</span>
+       <span class="nt">-d</span>, <span class="nt">--docfiles</span>
+              List only documentation files <span class="o">(</span>implies <span class="nt">-l</span><span class="o">)</span><span class="nb">.</span>     
+<span class="c"># 列出该软件包依赖的包和文件</span>
+       <span class="nt">-R</span>, <span class="nt">--requires</span>
+              List capabilities on which this package depends.
+
+</code></pre></div></div>
+
+<p>实例说明：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# rpm <span class="nt">-qf</span> /etc/zabbix/zabbix_java_gateway.conf
+zabbix-java-gateway-3.0.3-1.el7.x86_64
+<span class="o">[</span>root@linux-node1 ~]# rpm <span class="nt">-ql</span> zabbix-java-gateway 
+/etc/zabbix/zabbix_java_gateway.conf
+/etc/zabbix/zabbix_java_gateway_logback.xml
+/usr/lib/systemd/system/zabbix-java-gateway.service
+/usr/lib/tmpfiles.d/zabbix-java-gateway.conf
+/usr/sbin/zabbix_java_gateway
+/usr/share/doc/zabbix-java-gateway-3.0.3
+/usr/share/doc/zabbix-java-gateway-3.0.3/AUTHORS
+/usr/share/doc/zabbix-java-gateway-3.0.3/COPYING
+/usr/share/doc/zabbix-java-gateway-3.0.3/ChangeLog
+/usr/share/doc/zabbix-java-gateway-3.0.3/NEWS
+/usr/share/doc/zabbix-java-gateway-3.0.3/README
+/usr/share/zabbix-java-gateway
+/usr/share/zabbix-java-gateway/bin
+/usr/share/zabbix-java-gateway/bin/zabbix-java-gateway-3.0.3.jar
+/usr/share/zabbix-java-gateway/lib
+/usr/share/zabbix-java-gateway/lib/android-json-4.3_r3.1.jar
+/usr/share/zabbix-java-gateway/lib/logback-classic-0.9.27.jar
+/usr/share/zabbix-java-gateway/lib/logback-core-0.9.27.jar
+/usr/share/zabbix-java-gateway/lib/slf4j-api-1.6.1.jar
+/var/log/zabbix
+/var/run/zabbix
+<span class="o">[</span>root@linux-node1 ~]# rpm <span class="nt">-qi</span> zabbix-java-gateway 
+Name        : zabbix-java-gateway
+Version     : 3.0.3
+Release     : 1.el7
+Architecture: x86_64
+Install Date: Sat 18 Jun 2016 11:48:39 AM CST
+Group       : Applications/Internet
+Size        : 1326257
+License     : GPLv2+
+Signature   : DSA/SHA1, Mon 23 May 2016 08:02:14 PM CST, Key ID d13d58e479ea5ed4
+Source RPM  : zabbix-3.0.3-1.el7.src.rpm
+Build Date  : Mon 23 May 2016 05:04:48 PM CST
+Build Host  : build.zabbix.com
+Relocations : <span class="o">(</span>not relocatable<span class="o">)</span>
+URL         : http://www.zabbix.com/
+Summary     : Zabbix java gateway
+Description :
+Zabbix java gateway
+<span class="o">[</span>root@linux-node1 ~]# rpm <span class="nt">-qlc</span> zabbix-java-gateway 
+/etc/zabbix/zabbix_java_gateway.conf
+/etc/zabbix/zabbix_java_gateway_logback.xml
+<span class="o">[</span>root@linux-node1 ~]# rpm <span class="nt">-qld</span> zabbix-java-gateway 
+/usr/share/doc/zabbix-java-gateway-3.0.3/AUTHORS
+/usr/share/doc/zabbix-java-gateway-3.0.3/COPYING
+/usr/share/doc/zabbix-java-gateway-3.0.3/ChangeLog
+/usr/share/doc/zabbix-java-gateway-3.0.3/NEWS
+/usr/share/doc/zabbix-java-gateway-3.0.3/README
+<span class="o">[</span>root@linux-node1 ~]# rpm <span class="nt">-qR</span> zabbix-java-gateway 
+/bin/bash
+/bin/sh
+/bin/sh
+/bin/sh
+/bin/sh
+config<span class="o">(</span>zabbix-java-gateway<span class="o">)</span> <span class="o">=</span> 3.0.3-1.el7
+java-headless <span class="o">&gt;=</span> 1.6.0
+rpmlib<span class="o">(</span>CompressedFileNames<span class="o">)</span> &lt;<span class="o">=</span> 3.0.4-1
+rpmlib<span class="o">(</span>FileDigests<span class="o">)</span> &lt;<span class="o">=</span> 4.6.0-1
+rpmlib<span class="o">(</span>PayloadFilesHavePrefix<span class="o">)</span> &lt;<span class="o">=</span> 4.0-1
+systemd
+systemd
+systemd
+rpmlib<span class="o">(</span>PayloadIsXz<span class="o">)</span> &lt;<span class="o">=</span> 5.2-1
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p>man yum<br />
+<a href="http://www.centoscn.com/CentOS/help/2015/0827/6073.html">CentOS 7 中 rpm,yum 软件安装命令</a></p>
+:ET

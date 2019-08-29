@@ -1,0 +1,41 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>最近要在云主机上获取外网 IP，因为云主机上只配置了内网 IP，并没有直接配置外网 IP。</p>
+
+<h1 id="使用各大门户网站和专门厂商提供的-api-接口">使用各大门户网站和专门厂商提供的 API 接口</h1>
+
+<h2 id="1腾讯ip分享计划">1、腾讯IP分享计划</h2>
+
+<p>http://ip.qq.com/</p>
+
+<p>因为我是在 Shell 脚本中获取 IP，所以使用的以下命令(暂时找不到它的接口 URL，只能以这种直接的方式来获取了)：</p>
+
+<p><code class="highlighter-rouge">
+curl -s  ip.qq.com | grep "ip_contend" | awk -F'"' '{print $16}'
+</code></p>
+
+<h2 id="2淘宝-ip-地址库">2、淘宝 IP 地址库</h2>
+
+<p>http://ip.taobao.com/instructions.php</p>
+
+<p>获取外网 IP 使用以下命令：</p>
+
+<p><code class="highlighter-rouge">
+curl -s  http://ip.taobao.com/service/getIpInfo2.php?ip=myip | awk -F"ip" '{print $2}' | awk -F'"' '{print $3}'
+</code></p>
+
+<h2 id="3搜狐-ip-api-接口">3、搜狐 IP API 接口</h2>
+
+<p>http://pv.sohu.com/cityjson</p>
+
+<h2 id="4ipipnet">4、ipip.net</h2>
+
+<p>未找到接口 URL
+http://www.ipip.net/</p>
+
+<h2 id="5ipcn">5、ip.cn</h2>
+
+<p>未找到接口URL
+http://ip.cn/</p>
+
+:ET

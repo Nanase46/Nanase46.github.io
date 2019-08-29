@@ -1,0 +1,49 @@
+I"�<p>Logstash 收集系统日志</p>
+
+<h1 id="logstash-事件及-pipeline-简介">Logstash 事件及 Pipeline 简介</h1>
+
+<ol>
+  <li>Logstash 收集数据是按照事件，事件不只是一行，可以包含多行</li>
+  <li>input output 是 Logstash Pipeline 中必须存在的</li>
+  <li>Pipeline 流程： event -&gt; input -&gt; codec -&gt; filter -&gt; codec -&gt; output</li>
+</ol>
+
+<h1 id="logstash-收集系统日志">Logstash 收集系统日志</h1>
+
+<p>系统日志一般存放在对应的文件中，如 /var/log/messages 等，<br />
+我们可以使用 Logstash input 插件中的 file 插件来收集文件中的数据。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 /etc/logstash/conf.d]# <span class="nb">cat </span>file.conf 
+input <span class="o">{</span>
+    file <span class="o">{</span>
+        path <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"/var/log/messages"</span>,<span class="s2">"/var/log/secure"</span><span class="o">]</span>
+        <span class="nb">type</span> <span class="o">=&gt;</span> <span class="s2">"system-log"</span>
+        start_position <span class="o">=&gt;</span> <span class="s2">"beginning"</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+filter <span class="o">{</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+    elasticsearch <span class="o">{</span>
+        hosts <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"192.168.56.11:9200"</span><span class="o">]</span>
+        index <span class="o">=&gt;</span> <span class="s2">"system-log-%{+YYYY.MM}"</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>上面的配置文件演示实现了收集系统日志文件中的数据，然后写入到 ES 中。</p>
+
+<blockquote>
+
+  <p>系统日志一般比较小，可以每月一个索引。
+测试时在前台指定 file.conf 调试运行 logstash，然后在 ES head 插件中确认索引及数据是否写入。</p>
+</blockquote>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.elastic.co/guide/en/logstash/current/plugins-inputs-file.html"> Input plugins » file</a></p>
+
+:ET

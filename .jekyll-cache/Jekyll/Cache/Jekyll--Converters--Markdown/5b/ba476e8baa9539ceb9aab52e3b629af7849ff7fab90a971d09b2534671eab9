@@ -1,0 +1,64 @@
+I"8<h1 id="引言">引言</h1>
+
+<p>经常碰到要查询某个命令属于什么软件包，比如这几天部署 smokeping 时遇到不知道 dig 命令是属于什么软件包。<br />
+使用<code class="highlighter-rouge">yum provides</code>选项参数 即可查询。<br />
+再比如只知道软件包部分关键字，想搜索对应软件包全称，这是可以使用<code class="highlighter-rouge">yum search all KEYWORDS</code>来搜索<br />
+yum 使用的还是比较频繁的，所以这里准备不断总结 yum 在实际工作中常用的选项参数。</p>
+
+<h1 id="1-yum-provides">1 yum provides</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>provides       Find what package provides the given value
+</code></pre></div></div>
+
+<p>查找有什么软件包能提供给定的值</p>
+
+<p>例子：比如查询什么软件包提供 dig 命令</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# yum provides dig
+
+32:bind-utils-9.9.4-29.el7_2.3.x86_64 : Utilities <span class="k">for </span>querying DNS name servers
+Repo        : updates
+Matched from:
+Filename    : /usr/bin/dig
+
+</code></pre></div></div>
+<h1 id="2-yum-remove">2 yum remove</h1>
+
+<p>从系统中移除一个软件包，其实最起初的命令应该是 erase，remove 是 erase 的一个别名。</p>
+
+<pre>
+
+erase PACKAGE...
+
+Remove a package or packages from your system
+
+aliases: remove, autoremove, erase-n, erase-na, erase-nevra, autoremove-n, autoremove-na, 
+autoremove-nevra, remove-n, remove-na, remove-nevra
+
+</pre>
+
+<p>今天碰到一个情况就是，通过 yum remove 卸载方式安装的 Nginx 时，<br />
+<code class="highlighter-rouge">/var/log, /var/cache</code> 等目录中还有残留，其实我的原意是想完全卸载一个软件。<br />
+如这位朋友的情况：<a href="https://segmentfault.com/q/1010000002578813">Linux 中如何完全卸载一个软件(如 CentOS)</a>  
+里面的回答我还是比较同意的（现暂时不纠结完全卸载一个软件）。</p>
+
+<pre>
+
+yum remove 的话貌似已经把所有的依赖都删除了。
+所以剩下的只有两部分：
+缓存（cache）和日志（log）。
+
+日志是不会自动删除的，因为第一工作量太大，各种软件的日志目录都能自定义，没办法完全删除，
+另一个就是因为日志记录了几乎所有的东西，错误，警告，硬件错误，访问记录等。
+
+一般的服务器日志都不会删除，
+（装了桌面的话，X.org.log 除外）
+甚至还有专门的日志切割软件 logrotate 来进行日志分割方便备份和查询。
+
+</pre>
+
+<h1 id="ref">Ref</h1>
+<p>yum –help<br />
+<a href="https://segmentfault.com/q/1010000002578813">Linux 中如何完全卸载一个软件(如 CentOS)</a>  </p>
+:ET

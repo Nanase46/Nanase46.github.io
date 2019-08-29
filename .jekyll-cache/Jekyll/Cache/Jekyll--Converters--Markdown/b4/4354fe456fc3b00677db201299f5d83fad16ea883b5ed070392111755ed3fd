@@ -1,0 +1,86 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>前几天测试 Murder 时，当没开启 Tracker 服务器时，在 Peer 下执行下载时会有如下报错：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@xxx_game dist]# python /usr/local/murder/dist/murder_client.py peer /data/download/server_1262.zip.torrent /data/download/server_1262.zip x.x.x.x
+Problem connecting to tracker - <span class="o">[</span>Errno 111] Connection refused
+<span class="o">[</span>root@xxx_game dist]# <span class="nb">echo</span> <span class="nv">$?</span>
+0
+</code></pre></div></div>
+
+<p>从上面可以看出，当在 Shell 命令行中执行 murder_client.py 脚本出错后，Shell 的 $? 返回值是 0，但我需要在 Shell 脚本中执行这个脚本，
+并判断这个 Python 脚本是否执行成功，因为后续操作的判断会根据这个 $?，如果像上面那样出错，返回 $? 为 0，那么后续就会判断 Python 下载成功了，
+这可是错误的。<br />
+所以我当前的解决方法是自己在 Shell 脚本里面加了一个判断，如果 Python 脚本执行后输出结果不会为空，不管提示信息为何，判断 Python 脚本执行
+失败，通过 Shell 脚本返回一个提示信息和错误码，如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">result</span><span class="o">=</span><span class="sb">`</span>python /usr/local/murder/dist/murder_client.py peer <span class="k">${</span><span class="nv">download_file</span><span class="k">}</span>.torrent <span class="k">${</span><span class="nv">download_file</span><span class="k">}</span> <span class="nv">$IP</span><span class="sb">`</span>
+<span class="k">if</span> <span class="o">[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$result</span><span class="s2">"</span> <span class="o">]</span>
+<span class="k">then
+    </span><span class="nb">echo</span> <span class="nv">$result</span>
+    <span class="nb">echo</span> <span class="s2">"Download error, please check."</span>
+    <span class="nb">exit </span>66
+<span class="k">fi</span>
+
+</code></pre></div></div>
+
+<h1 id="python-异常处理分析">Python 异常处理分析</h1>
+
+<p>为什么上面 murder_client.py 脚本出错后，Shell 的 $? 还是为 0 呢？<br />
+是这个 Python 脚本没有对异常进行 exit 或 sys.exit() 的处理，而是直接抛出异常了。</p>
+
+<p>根据错误提示，搜索到改错误提示异常处理是在<a href="https://github.com/lg/murder/blob/master/dist/BitTornado/BT1/Rerequester.py">这个文件</a>中，</p>
+
+<p>截取如下：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">err</span> <span class="o">=</span> <span class="bp">None</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">urlopen</span><span class="p">(</span><span class="n">t</span><span class="o">+</span><span class="n">s</span><span class="p">)</span>
+    <span class="n">closer</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">close</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">h</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<span class="k">except</span> <span class="p">(</span><span class="nb">IOError</span><span class="p">,</span> <span class="n">error</span><span class="p">),</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="s">'Problem connecting to tracker - '</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="n">err</span> <span class="o">=</span> <span class="s">'Problem connecting to tracker'</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">h</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p>当没开启 Tracker 服务器时，在 Peer 上执行 murder_client.py，就会出现 Tracker 拒绝连接的提示，在上面的代码中就对应了
+IOError 异常，并没有做 exit 或 sys.exit() 的处理。</p>
+
+<h1 id="python-中的-exit-和-sysexit-的区别">Python 中的 exit() 和 sys.exit() 的区别</h1>
+
+<p>现在来了解下 Python 中的 exit() 和 sys.exit()，</p>
+
+<blockquote>
+
+  <p>exit is a helper for the interactive shell - sys.exit is intended for use in programs.</p>
+</blockquote>
+
+<blockquote>
+
+  <p>The site module (which is imported automatically during startup, except if the -S command-line option is given) adds several constants to the built-in namespace (e.g. exit). They are useful for the interactive interpreter shell and should not be used in programs.</p>
+</blockquote>
+
+<blockquote>
+
+  <p>Note that there is a third exit option, namely os._exit, which exits without calling cleanup handlers, flushing stdio buffers, etc. (and which should normally only be used in the child process after a fork()).</p>
+</blockquote>
+
+<p>上面的意思是 exit 用于给交互式 Shell 返回值，而 sys.exit 是用于程序内部。</p>
+
+<ul>
+  <li>exit()/quit(), 抛出 SystemExit 异常. 一般在交互式 Shell 中退出时使用.</li>
+  <li>sys.exit(n) 退出程序引发 SystemExit 异常, 可以捕获异常执行些清理工作. n 默认值为 0, 表示正常退出. 其他都是非正常退出. 还可以 sys.exit(“sorry, goodbye!”); 一般主程序中使用此退出.</li>
+  <li>os._exit(n), 直接退出, 不抛异常, 不执行相关清理工作. 常用在子进程的退出.</li>
+</ul>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://stackoverflow.com/questions/6501121/the-difference-between-exit-and-sys-exit-in-python">The difference between exit() and sys.exit() in Python?</a><br />
+<a href="http://stackoverflow.com/questions/285289/exit-codes-in-python">Exit codes in Python</a><br />
+<a href="https://docs.python.org/2/library/sys.html#sys.exit">sys.exit</a><br />
+<a href="https://www.zhihu.com/question/21187839">python 中 os._exit()， sys.exit()， exit() 的区别是什么</a><br />
+<a href="http://www.pythondoc.com/pythontutorial3/errors.html">错误和异常</a></p>
+
+:ET

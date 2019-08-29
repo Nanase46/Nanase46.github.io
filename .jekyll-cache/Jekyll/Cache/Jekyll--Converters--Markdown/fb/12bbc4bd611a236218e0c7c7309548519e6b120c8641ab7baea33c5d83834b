@@ -1,0 +1,176 @@
+I"E"<h1 id="1-添加acnamemxptr记录">1 添加A、CNAME、MX、PTR记录</h1>
+
+<p>以下操作都在 Master DNS 上做操作：</p>
+
+<p>增加一条 A 记录 和 一条 MX 记录：</p>
+
+<ul>
+  <li>a               A       192.168.122.100</li>
+  <li>mx               MX 5       192.168.122.101</li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 如下：</span>
+
+<span class="o">[</span>root@ns-master ~]# <span class="nb">tail</span> <span class="nt">-2</span> /var/named/chroot/etc/example.com.zone 
+a               A       192.168.122.100  
+mx               MX 5       192.168.122.101  
+
+<span class="c"># 重新加载区域文件</span>
+<span class="o">[</span>root@ns-master ~]# rndc reload
+WARNING: key file <span class="o">(</span>/etc/rndc.key<span class="o">)</span> exists, but using default configuration file <span class="o">(</span>/etc/rndc.conf<span class="o">)</span>
+server reload successful
+
+
+<span class="c"># 检查增加的 DNS 记录</span>
+
+<span class="o">[</span>root@ns-master ~]# dig @192.168.56.13 a.example.com
+
+<span class="p">;</span> &lt;&lt;<span class="o">&gt;&gt;</span> DiG 9.8.2rc1-RedHat-9.8.2-0.47.rc1.el6 &lt;&lt;<span class="o">&gt;&gt;</span> @192.168.56.13 a.example.com
+<span class="p">;</span> <span class="o">(</span>1 server found<span class="o">)</span>
+<span class="p">;;</span> global options: +cmd
+<span class="p">;;</span> Got answer:
+<span class="p">;;</span> -&gt;&gt;HEADER<span class="o">&lt;&lt;-</span> <span class="no">opcode</span><span class="sh">: QUERY, status: NOERROR, id: 49576
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 1, ADDITIONAL: 1
+
+;; QUESTION SECTION:
+;a.example.com.			IN	A
+
+;; ANSWER SECTION:
+a.example.com.		3600	IN	A	192.168.122.100			# 查询到了 a.example.com 的 A 记录
+
+;; AUTHORITY SECTION:
+example.com.		3600	IN	NS	op.example.com.
+
+;; ADDITIONAL SECTION:
+op.example.com.		3600	IN	A	1.2.3.4
+
+;; Query time: 1 msec
+;; SERVER: 192.168.56.13#53(192.168.56.13)
+;; WHEN: Fri Jul  8 23:44:35 2016
+;; MSG SIZE  rcvd: 80
+
+[root@ns-master ~]# dig @192.168.56.13 mx.example.com
+
+; &lt;&lt;&gt;&gt; DiG 9.8.2rc1-RedHat-9.8.2-0.47.rc1.el6 &lt;&lt;&gt;&gt; @192.168.56.13 mx.example.com
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; -&gt;&gt;HEADER&lt;&lt;- opcode: QUERY, status: NOERROR, id: 60566
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;mx.example.com.			IN	A
+
+;; AUTHORITY SECTION:
+example.com.		3600	IN	SOA	op.example.com. dns.example.com. 2000 900 600 86400 3600	# 并没有立即查询到 mx.example.com 的 和 MX 记录
+
+;; Query time: 1 msec
+;; SERVER: 192.168.56.13#53(192.168.56.13)
+;; WHEN: Fri Jul  8 23:44:50 2016
+;; MSG SIZE  rcvd: 75
+
+[root@ns-master ~]# host mx.example.com 192.168.56.13
+Using domain server:
+Name: 192.168.56.13
+Address: 192.168.56.13#53
+Aliases: 
+
+mx.example.com mail is handled by 5 192.168.122.101.example.com.	# host 命令可以查询到 mx.example.com 的 和 MX 记录
+
+</span></code></pre></div></div>
+<h1 id="2-配置反向解析">2 配置反向解析</h1>
+
+<h1 id="21-viewconf-配置文件中增加反向解析区域配置">2.1 view.conf 配置文件中增加反向解析区域配置</h1>
+
+<p>内容如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@ns-master ~]# <span class="nb">cat</span> /var/named/chroot/etc/view.conf 
+view <span class="s2">"View"</span> <span class="o">{</span>
+  zone <span class="s2">"example.com"</span> <span class="o">{</span>
+        <span class="nb">type    </span>master<span class="p">;</span>
+        file    <span class="s2">"example.com.zone"</span><span class="p">;</span>
+        allow-transfer <span class="o">{</span>
+                192.168.56.14<span class="p">;</span>
+        <span class="o">}</span><span class="p">;</span>
+        notify  <span class="nb">yes</span><span class="p">;</span>
+        also-notify <span class="o">{</span>
+                192.168.56.14<span class="p">;</span>
+        <span class="o">}</span><span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+  zone <span class="s2">"168.192.in-addr.arpa"</span> <span class="o">{</span>		<span class="c"># 从此处开始，增加反向解析区域配置</span>
+        <span class="nb">type    </span>master<span class="p">;</span>
+        file    <span class="s2">"168.192.zone"</span><span class="p">;</span>
+        allow-transfer <span class="o">{</span>
+                192.168.56.14<span class="p">;</span>
+        <span class="o">}</span><span class="p">;</span>
+        notify  <span class="nb">yes</span><span class="p">;</span>
+        also-notify <span class="o">{</span>
+                192.168.56.14<span class="p">;</span>
+        <span class="o">}</span><span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>								<span class="c"># 此处结束</span>
+<span class="o">}</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h1 id="22-增加反向解析区域文件">2.2 增加反向解析区域文件</h1>
+
+<p>内容如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@ns-master ~]# <span class="nb">cat</span> /var/named/chroot/etc/168.192.zone
+<span class="nv">$TTL</span> 3600       <span class="p">;</span> 1 hour
+@                  IN SOA  op.example.com. dns.example.com. <span class="o">(</span>
+                                2004       <span class="p">;</span> serial
+                                900        <span class="p">;</span> refresh <span class="o">(</span>15 minutes<span class="o">)</span>
+                                600        <span class="p">;</span> retry <span class="o">(</span>10 minutes<span class="o">)</span>
+                                86400      <span class="p">;</span> expire <span class="o">(</span>1 day<span class="o">)</span>
+                                3600       <span class="p">;</span> minimum <span class="o">(</span>1 hour<span class="o">)</span>
+                                <span class="o">)</span>
+                        NS      op.example.com.
+102.122     IN      PTR     a.example.com.
+
+<span class="c"># 修改区域文件属主</span>
+<span class="o">[</span>root@ns-master ~]# <span class="nb">chown </span>named.named  /var/named/chroot/etc/168.192.zone
+<span class="o">[</span>root@ns-master ~]# rndc reload
+
+<span class="c"># 使用 host 命令测试反向解析</span>
+
+<span class="o">[</span>root@ns-master ~]# host 192.168.122.102 192.168.56.13
+Using domain server:
+Name: 192.168.56.13
+Address: 192.168.56.13#53
+Aliases: 
+
+102.122.168.192.in-addr.arpa domain name pointer a.example.com.
+
+
+</code></pre></div></div>
+
+<h1 id="3-主从dns下slave-dns-服务器-viewconf-配置文件增加反向解析区域配置">3 主从DNS下，Slave DNS 服务器 view.conf 配置文件增加反向解析区域配置</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@ns-slave ~]# <span class="nb">cat</span> /var/named/chroot/etc/view.conf
+view <span class="s2">"SlaveView"</span> <span class="o">{</span>
+        zone <span class="s2">"example.com"</span> <span class="o">{</span>
+             <span class="nb">type    </span>slave<span class="p">;</span>
+             masters <span class="o">{</span>192.168.56.13<span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+             file    <span class="s2">"slave.example.com.zone"</span><span class="p">;</span>
+        <span class="o">}</span><span class="p">;</span>
+	zone <span class="s2">"168.192.in-addr.arpa"</span> <span class="o">{</span>
+             <span class="nb">type    </span>slave<span class="p">;</span>
+             masters <span class="o">{</span>192.168.56.13<span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+             file    <span class="s2">"slave.168.192.zone"</span><span class="p">;</span>
+        <span class="o">}</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+<span class="o">[</span>root@ns-slave ~]# rndc reload
+WARNING: key file <span class="o">(</span>/etc/rndc.key<span class="o">)</span> exists, but using default configuration file <span class="o">(</span>/etc/rndc.conf<span class="o">)</span>
+server reload successful
+
+<span class="c"># 使用 host 命令测试反向解析 </span>
+<span class="o">[</span>root@ns-slave ~]# host 192.168.122.102 192.168.56.14
+Using domain server:
+Name: 192.168.56.14
+Address: 192.168.56.14#53
+Aliases: 
+
+102.122.168.192.in-addr.arpa domain name pointer a.example.com.
+
+</code></pre></div></div>
+:ET

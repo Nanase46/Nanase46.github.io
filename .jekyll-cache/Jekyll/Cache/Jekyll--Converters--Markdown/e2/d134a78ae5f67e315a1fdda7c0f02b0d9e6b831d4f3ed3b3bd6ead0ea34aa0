@@ -1,0 +1,321 @@
+I".1<h1 id="saltstack-states-状态特点">SaltStack States 状态特点</h1>
+
+<ul>
+  <li>状态不能回滚</li>
+  <li>状态可以多次执行</li>
+</ul>
+
+<h1 id="saltstack-状态文件">SaltStack 状态文件</h1>
+
+<ul>
+  <li>SaltStack 的状态使用状态文件 SLS(SaLt State)来描述</li>
+  <li>SLS 默认文件格式 YAML</li>
+  <li>SLS 文件解析模式是从上往下</li>
+  <li>Salt 最终执行的时候，将 SLS 解析成一个字典的格式</li>
+</ul>
+
+<h2 id="sls-文件说明">SLS 文件说明</h2>
+
+<p>SLS 文件包含名称 ID 声明、状态 State 声明、选项（或属性）声明。 <br />
+其中名称 ID 声明默认作为 State 的 name 声明（没有指定 name 声明时）。</p>
+
+<p>例子：</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apache-install</span><span class="pi">:</span>     <span class="c1"># ID 声明</span>
+  <span class="s">service.running</span><span class="pi">:</span>  <span class="c1"># State 声明</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">httpd</span>   <span class="c1"># 选项（或属性）声明</span>
+    <span class="pi">-</span> <span class="na">enable</span><span class="pi">:</span> <span class="s">True</span>
+</code></pre></div></div>
+
+<p>一个 ID 声明下面，状态模块不能重复，比如不能出现 2 个 file.managed 状态模块。</p>
+
+<p>salt:// 指当前环境根目录。配置文件中指定如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>file_roots:
+  base:
+    - /srv/salt
+</code></pre></div></div>
+
+<h1 id="lamp-架构-sls-文件编写实例">LAMP 架构 SLS 文件编写实例</h1>
+
+<p>分析 LAMP 架构部署配置所需状态模块：</p>
+
+<ol>
+  <li>安装软件包    pkg</li>
+  <li>修改配置文件  file</li>
+  <li>启动服务      service</li>
+</ol>
+
+<h2 id="pkg-状态模块常用方法">pkg 状态模块常用方法</h2>
+
+<ul>
+  <li>pkg.installed 安装软件包 (pkgs 同时安装多个包)</li>
+  <li>pkg.group_installed 安装软件包组</li>
+  <li>pkg.latest 确认软件包为最新版本</li>
+  <li>pkg.removed 卸载软件包</li>
+  <li>pkg.purge 卸载并删除配置文件（会把软件包和配置文件都删除掉）</li>
+</ul>
+
+<h2 id="file-状态模块常用方法">file 状态模块常用方法</h2>
+
+<ul>
+  <li>file.managed</li>
+</ul>
+
+<h2 id="service-状态模块常用方法">service 状态模块常用方法</h2>
+
+<ul>
+  <li>service.running</li>
+</ul>
+
+<h1 id="lamp-架构部署配置状态-sls-文件编写">LAMP 架构部署配置状态 SLS 文件编写</h1>
+
+<p>LAMP 架构部署配置 pkg file service 状态 SLS 编写过程如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nb">cd</span> /srv/salt/
+<span class="nb">mkdir </span>lamp
+<span class="nb">cd </span>lamp
+<span class="nb">cat</span> <span class="o">&gt;</span> lamp.sls <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh">
+lamp-pkg:
+  pkg.installed:
+    - pkgs:
+      - httpd
+      - php
+      - mariadb
+      - mariadb-server
+      - php-cli
+      - php-mbstring
+
+apache-config:
+  file.managed:
+    - name: /etc/httpd/conf/httpd.conf
+    - source: salt://lamp/files/httpd.conf
+    - user: root
+    - group: root
+    - mode: 644
+
+php-config:
+  file.managed:
+    - name: /etc/php.ini
+    - source: salt://lamp/files/php.ini
+    - user: root
+    - group: root
+    - mode: 644
+
+mysql-config:
+  file.managed:
+    - name: /etc/my.cnf
+    - source: salt://lamp/files/my.cnf
+    - user: root
+    - group: root
+    - mode: 644
+
+apache-service:
+  service.running:
+    - name: httpd
+    - enable: True
+    - reload: True
+
+mysql-service:
+  service.running:
+    - name: mariadb
+    - enable: True
+    - reload: True
+
+cd /srv/salt/lamp
+mkdir files
+cd files
+cp /etc/httpd/conf/httpd.conf .
+cp /etc/php.ini .
+cp /etc/my.cnf .
+salt 'linux-node2*' test.ping
+salt 'linux-node2*' state.sls lamp.lamp
+
+</span></code></pre></div></div>
+
+<h1 id="sls-文件中状态之间的关系">SLS 文件中状态之间的关系</h1>
+<p>状态之间有如下关系：</p>
+
+<ol>
+  <li>我依赖谁   require</li>
+  <li>我被谁依赖 require_in</li>
+  <li>我监控谁 watch(watch 包含 require)</li>
+  <li>我被监控谁 watch_in</li>
+  <li>我引用谁 include</li>
+  <li>我扩展谁</li>
+</ol>
+
+<p>举例：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># require 例子</span>
+apache-service:
+  service.running:
+    - name: httpd
+    - <span class="nb">enable</span>: True
+    - reload: True
+    - require:
+      - pkg: lamp-pkg
+      - file: apache-config
+
+<span class="c"># require_in 例子</span>
+mysql-config:
+  file-managed:
+    - name: /etc/my.cnf
+    - <span class="nb">source</span>: salt://lamp/files/my.cnf
+    - user: root
+    - group: root
+    - mode: 644
+    - require_in:
+      - service: mysql-service
+
+<span class="c"># watch 例子 （只要状态发生变化就做相应的操作）  </span>
+apache-service:
+  service.running:
+    - name: httpd
+    - <span class="nb">enable</span>: True
+    - reload: True
+    - require:
+      - pkg: lamp-pkg
+    - watch:
+      - file: apache-config
+<span class="c"># 如果 apche-config 这个 ID 的状态发生变化就 reload，如果不加 reload=True 的话就 restart</span>
+</code></pre></div></div>
+
+<p>使用了状态关系配置后，lamp.sls 文件内容如下：</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">lamp-pkg</span><span class="pi">:</span>
+  <span class="s">pkg.installed</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">pkgs</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">httpd</span>
+      <span class="pi">-</span> <span class="s">php</span>
+      <span class="pi">-</span> <span class="s">mariadb</span>
+      <span class="pi">-</span> <span class="s">mariadb-server</span>
+      <span class="pi">-</span> <span class="s">php-cli</span>
+      <span class="pi">-</span> <span class="s">php-mbstring</span>
+
+<span class="na">apache-config</span><span class="pi">:</span>
+  <span class="s">file.managed</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">/etc/httpd/conf/httpd.conf</span>
+    <span class="pi">-</span> <span class="na">source</span><span class="pi">:</span> <span class="s">salt://lamp/files/httpd.conf</span>
+    <span class="pi">-</span> <span class="na">user</span><span class="pi">:</span> <span class="s">root</span>
+    <span class="pi">-</span> <span class="na">group</span><span class="pi">:</span> <span class="s">root</span>
+    <span class="pi">-</span> <span class="na">mode</span><span class="pi">:</span> <span class="m">644</span>
+
+<span class="na">php-config</span><span class="pi">:</span>
+  <span class="s">file.managed</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">/etc/php.ini</span>
+    <span class="pi">-</span> <span class="na">source</span><span class="pi">:</span> <span class="s">salt://lamp/files/php.ini</span>
+    <span class="pi">-</span> <span class="na">user</span><span class="pi">:</span> <span class="s">root</span>
+    <span class="pi">-</span> <span class="na">group</span><span class="pi">:</span> <span class="s">root</span>
+    <span class="pi">-</span> <span class="na">mode</span><span class="pi">:</span> <span class="m">644</span>
+
+<span class="na">mysql-config</span><span class="pi">:</span>
+  <span class="s">file.managed</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">/etc/my.cnf</span>
+    <span class="pi">-</span> <span class="na">source</span><span class="pi">:</span> <span class="s">salt://lamp/files/my.cnf</span>
+    <span class="pi">-</span> <span class="na">user</span><span class="pi">:</span> <span class="s">root</span>
+    <span class="pi">-</span> <span class="na">group</span><span class="pi">:</span> <span class="s">root</span>
+    <span class="pi">-</span> <span class="na">mode</span><span class="pi">:</span> <span class="m">644</span>
+    <span class="pi">-</span> <span class="na">require_in</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">service</span><span class="pi">:</span> <span class="s">mysql-service</span>
+
+<span class="na">apache-service</span><span class="pi">:</span>
+  <span class="s">service.running</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">httpd</span>
+    <span class="pi">-</span> <span class="na">enable</span><span class="pi">:</span> <span class="s">True</span>
+    <span class="pi">-</span> <span class="na">reload</span><span class="pi">:</span> <span class="s">True</span>
+    <span class="pi">-</span> <span class="na">require</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">pkg</span><span class="pi">:</span> <span class="s">lamp-pkg</span>
+    <span class="pi">-</span> <span class="na">watch</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">file</span><span class="pi">:</span> <span class="s">apache-config</span>
+
+<span class="na">mysql-service</span><span class="pi">:</span>
+  <span class="s">service.running</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">mariadb</span>
+    <span class="pi">-</span> <span class="na">enable</span><span class="pi">:</span> <span class="s">True</span>
+    <span class="pi">-</span> <span class="na">reload</span><span class="pi">:</span> <span class="s">True</span>
+
+</code></pre></div></div>
+
+<h1 id="编写-sls-技巧">编写 SLS 技巧</h1>
+
+<ol>
+  <li>按状态分类，如果单独使用，很清晰</li>
+  <li>服务分类，可以被其他的 SLS include。例如 LNMP include mysql 的服务。</li>
+</ol>
+
+<h2 id="使用-include-改写-lampsls">使用 include 改写 lamp.sls</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> /srv/salt/lamp/
+<span class="c"># 分别将 pkg/config/service相关状态写到独立的文件中</span>
+<span class="o">[</span>root@linux-node1 lamp]# <span class="nb">cat </span>pkg.sls
+lamp-pkg:
+  pkg.installed:
+    - pkgs:
+      - httpd
+      - php
+      - mariadb
+      - mariadb-server
+      - php-cli
+      - php-mbstring
+<span class="o">[</span>root@linux-node1 lamp]# <span class="nb">cat </span>config.sls 
+apache-config:
+  file.managed:
+    - name: /etc/httpd/conf/httpd.conf
+    - <span class="nb">source</span>: salt://lamp/files/httpd.conf
+    - user: root
+    - group: root
+    - mode: 644
+
+php-config:
+  file.managed:
+    - name: /etc/php.ini
+    - <span class="nb">source</span>: salt://lamp/files/php.ini
+    - user: root
+    - group: root
+    - mode: 644
+
+mysql-config:
+  file.managed:
+    - name: /etc/my.cnf
+    - <span class="nb">source</span>: salt://lamp/files/my.cnf
+    - user: root
+    - group: root
+    - mode: 644
+    - require_in:
+      - service: mysql-service
+<span class="o">[</span>root@linux-node1 lamp]# <span class="nb">cat </span>service.sls 
+apache-service:
+  service.running:
+    - name: httpd
+    - <span class="nb">enable</span>: True
+    - reload: True
+    - require:
+      - pkg: lamp-pkg
+    - watch:
+      - file: apache-config
+
+mysql-service:
+  service.running:
+    - name: mariadb
+    - <span class="nb">enable</span>: True
+    - reload: True
+    
+<span class="c"># 使用 include 包含以上 sls</span>
+<span class="nb">cat</span> <span class="o">&gt;</span> init.sls <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+include:
+  - lamp.pkg
+  - lamp.config
+  - lamp.service
+</span><span class="no">EOF
+
+</span>salt <span class="s1">'linux-node2*'</span> state.sls lamp.init
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://docs.saltstack.com/en/latest/ref/states/all/salt.states.pkg.html">SALT.STATES.PKG</a><br />
+<a href="https://docs.saltstack.com/en/latest/ref/states/all/salt.states.service.html">SALT.STATES.SERVICE</a><br />
+<a href="https://docs.saltstack.com/en/latest/ref/states/all/salt.states.file.html">SALT.STATES.FILE</a></p>
+
+:ET

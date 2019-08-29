@@ -1,0 +1,141 @@
+I"6<h1 id="zabbix-api-简介">Zabbix API 简介</h1>
+
+<pre>
+
+Zabbix API 开始扮演着越来越重要的角色，尤其是在集成第三方软件和自动化日常任务时。
+很难想象管理数千台服务器而没有自动化是多么的困难。
+Zabbix API 为批量操作、第三方软件集成以及其他作用提供可编程接口。
+
+Zabbix API 是在 1.8 版本中开始引进并且已经被广泛应用。所有的 Zabbix 移动客户端都是基于 API，
+甚至原生的 WEB 前端部分也是建立在它之上。
+Zabbix API 中间件使得架构更加模块化也避免直接对数据库进行操作。
+它允许你通过 JSON RPC 协议来创建、更新和获取 Zabbix 对象并且做任何你喜欢的操作【当然前提是你拥有认证账户】。
+
+Zabbix API 提供两项主要功能：
+
+1. 远程管理 Zabbix 配置
+2. 远程检索配置和历史数据
+
+使用 JSON
+API 采用 JSON-RPC 实现。这意味着调用任何函数，都需要发送 POST 请求，输入输出数据都是以 JSON 格式。
+
+</pre>
+
+<h1 id="zabbix-api-的使用流程">Zabbix API 的使用流程</h1>
+
+<h2 id="使用-api-的基本步骤">使用 API 的基本步骤</h2>
+
+<ol>
+  <li>连接 http://x.x.x.x/api_jsonrpc.php 提供用户名和密码，<br />
+并标识 HTTP 头部 Content-Type:application/json，HTTP 方法为 POST。</li>
+  <li>获取 SESSIONID</li>
+  <li>通过 SESSIONID 建立后续的连接</li>
+  <li>提交 POST 数据，格式为 JSON，其中放对应的方法，获取需要的数据。</li>
+</ol>
+
+<h2 id="用-curl-模拟-api-的使用">用 curl 模拟 API 的使用</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 1. 获取 SESSIONID</span>
+
+<span class="o">[</span>root@linux-node1 ~]# curl <span class="nt">-s</span> <span class="nt">-X</span> POST <span class="nt">-H</span> <span class="s1">'Content-Type:application/json'</span> <span class="nt">-d</span> <span class="s1">'
+&gt; {
+&gt;     "jsonrpc": "2.0",
+&gt;     "method": "user.login",
+&gt;     "params": {
+&gt;         "user": "Admin",
+&gt;         "password": "zabbix"
+&gt;     },
+&gt;     "id": 1
+&gt; }'</span> http://192.168.56.11/zabbix/api_jsonrpc.php | python <span class="nt">-m</span> json.tool
+<span class="o">{</span>
+    <span class="s2">"id"</span>: 1,
+    <span class="s2">"jsonrpc"</span>: <span class="s2">"2.0"</span>,
+    <span class="s2">"result"</span>: <span class="s2">"6a0d235908c25a495f0d356157fbb3d3"</span>
+<span class="o">}</span>
+ 
+
+<span class="c"># 2. 用获取的 SESSIONID 去调用 API 的 host.get 方法请求 hostid</span>
+
+<span class="o">[</span>root@linux-node1 ~]# curl <span class="nt">-s</span> <span class="nt">-X</span> POST <span class="nt">-H</span> <span class="s1">'Content-Type:application/json'</span> <span class="nt">-d</span> <span class="s1">'
+&gt; {
+&gt;     "jsonrpc": "2.0",
+&gt;     "method": "host.get",
+&gt;     "params": {
+&gt;         "output": ["hostid"]
+&gt;     },
+&gt;     "auth": "6a0d235908c25a495f0d356157fbb3d3",
+&gt;     "id": 1
+&gt; }'</span> http://192.168.56.11/zabbix/api_jsonrpc.php | python <span class="nt">-m</span> json.tool
+<span class="o">{</span>
+    <span class="s2">"id"</span>: 1,
+    <span class="s2">"jsonrpc"</span>: <span class="s2">"2.0"</span>,
+    <span class="s2">"result"</span>: <span class="o">[</span>
+        <span class="o">{</span>
+            <span class="s2">"hostid"</span>: <span class="s2">"10084"</span>
+        <span class="o">}</span>,
+        <span class="o">{</span>
+            <span class="s2">"hostid"</span>: <span class="s2">"10120"</span>
+        <span class="o">}</span>
+    <span class="o">]</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>可以通过 API 来添加和删除 Host，这里就不举例了，具体方法参考官网文档。<br />
+在实际的 API 开发应用中，我们可以采用 Python 等其他编程语言中来实现。
+如下，就是用 Python 写的用于认证获取 SESSIONID 的代码例子：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c1">#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+<span class="n">url</span> <span class="o">=</span> <span class="s">'http://192.168.56.11/zabbix/api_jsonrpc.php'</span>
+<span class="n">post_data</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">"jsonrpc"</span><span class="p">:</span> <span class="s">"2.0"</span><span class="p">,</span>
+    <span class="s">"method"</span><span class="p">:</span> <span class="s">"user.login"</span><span class="p">,</span>
+    <span class="s">"params"</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">"user"</span><span class="p">:</span> <span class="s">"Admin"</span><span class="p">,</span>
+        <span class="s">"password"</span><span class="p">:</span> <span class="s">"zabbix"</span>
+    <span class="p">},</span>
+    <span class="s">"id"</span><span class="p">:</span> <span class="mi">1</span>
+<span class="p">}</span>
+<span class="n">post_header</span> <span class="o">=</span> <span class="p">{</span><span class="s">'Content-Type'</span><span class="p">:</span> <span class="s">'application/json'</span><span class="p">}</span>
+
+<span class="n">ret</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">post_data</span><span class="p">),</span> <span class="n">headers</span><span class="o">=</span><span class="n">post_header</span><span class="p">)</span>
+
+<span class="n">zabbix_ret</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">ret</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">zabbix_ret</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s">'result'</span><span class="p">):</span>
+    <span class="k">print</span> <span class="s">'login error'</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="k">print</span> <span class="n">zabbix_ret</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">'result'</span><span class="p">)</span>
+
+</code></pre></div></div>
+
+<p>执行脚本时，注意要安装 Python requests 模块。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# python zabbix_auth.py
+Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
+  File <span class="s2">"zabbix_auth.py"</span>, line 4, <span class="k">in</span> &lt;module&gt;
+    import requests
+ImportError: No module named requests
+
+<span class="o">[</span>root@linux-node1 ~]# yum <span class="nb">install </span>python-pip <span class="nt">-y</span>
+<span class="o">[</span>root@linux-node1 ~]# pip <span class="nb">install </span>requests
+
+<span class="o">[</span>root@linux-node1 ~]# python zabbix_auth.py 
+f2453c4cc730d5158a87e0754940138e
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.zabbix.com/documentation/3.0/manual/api">Zabbix API</a><br />
+<a href="http://www.ttlsa.com/zabbix/zabbix-dev-api/">Zabbix API 二次开发使用与介绍</a><br />
+<a href="http://kaibinyuan.blog.51cto.com/7304008/1632968">Zabbix API简介</a><br />
+<a href="http://paperplane.ruhoh.com/zabbix/intro-to-zabbix-api/">ZABBIX API 简介及使用</a></p>
+
+:ET

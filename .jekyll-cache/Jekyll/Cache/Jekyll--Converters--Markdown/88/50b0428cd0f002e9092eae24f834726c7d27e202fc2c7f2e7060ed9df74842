@@ -1,0 +1,72 @@
+I"�<h1 id="引言">引言</h1>
+<p>最近在关注 iPhone 6s Plus 价格，每次去不同国家官网看了价格，然后换算成人民币，有点烦琐，于是写了个 Shell 脚本来做个这个事。</p>
+
+<h1 id="iphone-不同国家价格获取及转换成人民币">iPhone 不同国家价格获取及转换成人民币</h1>
+
+<p>以下是脚本内容：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+
+<span class="nb">echo
+echo</span> <span class="s2">"[1] iPhone 6s 5.5-inch-display-64gb-rose-gold"</span>
+<span class="nb">echo 
+
+read</span> <span class="nt">-p</span> <span class="s2">"Please choose one iPhone product listed above(enter the number): "</span> Product_ID
+
+<span class="nb">echo</span> <span class="nv">$Product_ID</span>
+
+<span class="k">if</span> <span class="o">[</span> <span class="nv">$Product_ID</span> <span class="nt">-eq</span> 1 <span class="o">]</span>
+<span class="k">then
+
+        </span><span class="nv">Product_Model</span><span class="o">=</span><span class="s2">"iphone6s/5.5-inch-display-64gb-rose-gold"</span>
+        <span class="nv">Product_US_URL</span><span class="o">=</span><span class="s2">"http://www.apple.com/us/shop/buy-iphone/</span><span class="k">${</span><span class="nv">Product_Model</span><span class="k">}</span><span class="s2">"</span>
+        <span class="nv">Product_HK_URL</span><span class="o">=</span><span class="s2">"http://www.apple.com/hk/shop/buy-iphone/</span><span class="k">${</span><span class="nv">Product_Model</span><span class="k">}</span><span class="s2">"</span>
+        <span class="nv">Product_CN_URL</span><span class="o">=</span><span class="s2">"http://www.apple.com/cn/shop/buy-iphone/iphone6s/5.5-%E8%8B%B1%E5%AF%B8%E5%B1%8F%E5%B9%95-64gb-%E7%8E%AB%E7%91%B0%E9%87%91%E8%89%B2"</span>
+        <span class="nv">Product_CN_Search_String</span><span class="o">=</span><span class="s2">"iphone6s/5.5-%E8%8B%B1%E5%AF%B8%E5%B1%8F%E5%B9%95-64gb-%E7%8E%AB%E7%91%B0%E9%87%91%E8%89%B2"</span>
+
+        <span class="nv">Product_US_Price</span><span class="o">=</span><span class="sb">`</span>curl <span class="nt">-S</span> <span class="nv">$Product_US_URL</span> 2&gt;/dev/null | <span class="nb">grep</span> <span class="nt">--color</span><span class="o">=</span>auto <span class="s2">"</span><span class="k">${</span><span class="nv">Product_Model</span><span class="k">}</span><span class="se">\"</span><span class="s2">.*data"</span> <span class="nt">-A</span> 9 | <span class="nb">grep</span> <span class="s2">"</span><span class="nv">$.</span><span class="s2">*$"</span> | <span class="nb">uniq</span> | <span class="nb">awk</span> <span class="nt">-F</span> <span class="s2">"$"</span> <span class="s1">'{print $2}'</span><span class="sb">`</span>
+        <span class="nv">Product_HK_Price</span><span class="o">=</span><span class="sb">`</span>curl <span class="nt">-S</span> <span class="nv">$Product_HK_URL</span> 2&gt;/dev/null | <span class="nb">grep</span> <span class="nt">--color</span><span class="o">=</span>auto <span class="s2">"</span><span class="k">${</span><span class="nv">Product_Model</span><span class="k">}</span><span class="se">\"</span><span class="s2">.*data"</span> <span class="nt">-A</span> 9 | <span class="nb">grep</span> <span class="s2">"</span><span class="nv">$.</span><span class="s2">*$"</span> | <span class="nb">uniq</span> | <span class="nb">awk</span> <span class="nt">-F</span> <span class="s2">"$"</span> <span class="s1">'{print $2}'</span> | <span class="nb">sed</span> <span class="s2">"s#,##g"</span><span class="sb">`</span>
+        <span class="nv">Product_CN_Price</span><span class="o">=</span><span class="sb">`</span>curl <span class="nt">-S</span> <span class="nv">$Product_CN_URL</span> 2&gt;/dev/null | <span class="nb">grep</span> <span class="nt">--color</span><span class="o">=</span>auto <span class="s2">"</span><span class="k">${</span><span class="nv">Product_CN_Search_String</span><span class="k">}</span><span class="s2">"</span> <span class="nt">-A</span> 9 | <span class="nb">grep </span>RMB | <span class="nb">awk</span> <span class="nt">-F</span> <span class="s2">" "</span> <span class="s1">'{print $2}'</span> | <span class="nb">sed</span> <span class="s2">"s#,##g"</span><span class="sb">`</span>
+
+        <span class="nv">USD_CNY_Rate</span><span class="o">=</span><span class="sb">`</span>curl <span class="nt">-S</span> <span class="s2">"http://download.finance.yahoo.com/d/quotes.csv?e=.csv&amp;f=sl1d1t1&amp;s=USDCNY=x"</span> 2&gt;/dev/null | <span class="nb">awk</span> <span class="nt">-F</span> <span class="s2">","</span> <span class="s1">'{print $2}'</span><span class="sb">`</span>
+        <span class="nv">HKD_CNY_Rate</span><span class="o">=</span><span class="sb">`</span>curl <span class="nt">-S</span> <span class="s2">"http://download.finance.yahoo.com/d/quotes.csv?e=.csv&amp;f=sl1d1t1&amp;s=HKDCNY=x"</span> 2&gt;/dev/null | <span class="nb">awk</span> <span class="nt">-F</span> <span class="s2">","</span> <span class="s1">'{print $2}'</span><span class="sb">`</span>
+
+        <span class="nb">echo</span> <span class="s2">"</span><span class="nv">$Product_Model</span><span class="s2"> in US, HK, CN on </span><span class="si">$(</span><span class="nb">date</span> +%F<span class="si">)</span><span class="s2">:"</span>
+        <span class="nb">echo</span> <span class="s2">"The US Version in CNY is:  </span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$Product_US_Price</span><span class="s2"> * </span><span class="nv">$USD_CNY_Rate</span><span class="s2">"</span> | bc<span class="sb">`</span><span class="s2">"</span>
+        <span class="nb">echo</span> <span class="s2">"The HK Version in CNY is:  </span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$Product_HK_Price</span><span class="s2"> * </span><span class="nv">$HKD_CNY_Rate</span><span class="s2">"</span> | bc<span class="sb">`</span><span class="s2">"</span>
+        <span class="nb">echo</span> <span class="s2">"The CN Version in CNY is:  </span><span class="nv">$Product_CN_Price</span><span class="s2">"</span>
+
+<span class="k">fi</span>
+
+</code></pre></div></div>
+
+<p>以上只列了一个我关注的 iPhone 型号，脚本逻辑很简单，模拟人工的操作，
+首先指定 iPhone 型号的对应的 URL，然后通过 curl 和 grep/awk/sed 等命令获取iPhone 的价格，<br />
+再就是获取当日汇率（使用 Yahoo 提供的 API），最后就是换算成人民币输出结果了。</p>
+
+<p>运行结果如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@Aliyun-BJ-01 <span class="nb">test</span><span class="o">]</span><span class="c"># sh Apple-Products-Prices-Converter.sh </span>
+
+<span class="o">[</span>1] iPhone 6s 5.5-inch-display-64gb-rose-gold
+
+Please choose one iPhone product listed above<span class="o">(</span>enter the number<span class="o">)</span>: 1
+1
+iphone6s/5.5-inch-display-64gb-rose-gold <span class="k">in </span>US, HK, CN on 2016-01-16:
+The US Version <span class="k">in </span>CNY is:  5573.7699
+The HK Version <span class="k">in </span>CNY is:  6054.4524
+The CN Version <span class="k">in </span>CNY is:  6888
+</code></pre></div></div>
+
+<h1 id="通过-api-接口获取价格信息">通过 API 接口获取价格信息</h1>
+
+<p>上面的方式比较笨，比较高级一点的做法是通过 API 接口获取价格信息。<br />
+下面是 iPhone 7 Plus 相关信息的地址，里面包含了价格。</p>
+
+<p>http://www.apple.com/shop/updateSummary?node=home/shop_iphone/family/iphone_7&amp;step=select&amp;product=MN482LL%2FA&amp;cppart=UNLOCKED%2FUS&amp;carrierPolicyType=UNLOCKED</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://raynix.info/archives/2216">调用YAHOO API监控外汇汇率</a><br />
+<a href="http://www.diebiang.com/webdev/_shijiyingyong_shixianshili_tongguoYahoo_APIhuoqushishihuobihuilvdaima_15.html">通过Yahoo API获取实时货币汇率代码</a></p>
+
+:ET

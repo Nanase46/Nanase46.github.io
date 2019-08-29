@@ -1,0 +1,41 @@
+I"�<h1 id="引言">引言</h1>
+<p>之前部署配置 bind 的 DNS 主从时，其中在配置文件需要配置 rndc 的 key。那么这个 key 如何生成呢？</p>
+
+<h1 id="bind-rndc-key-生成方法">bind rndc key 生成方法</h1>
+
+<p>当前只支持 HMAC-MD5 认证算法，secret 是 base-64 编码的，你可以使用一些程序，比如 mmencode 或者 dnssec-keygen(BIND 软件包自带)。<br />
+还有一个 rndc-confgen 命令，用于生成 rndc 的配置文件，我们也可以使用它，如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@ns-slave var]# <span class="nb">cd</span> /tmp/
+<span class="o">[</span>root@ns-slave tmp]# rndc-confgen <span class="nt">-r</span> /dev/urandom <span class="o">&gt;</span> rndc.conf
+<span class="o">[</span>root@ns-slave tmp]# <span class="nb">cat </span>rndc.conf 
+<span class="c"># Start of rndc.conf</span>
+key <span class="s2">"rndc-key"</span> <span class="o">{</span>
+	algorithm hmac-md5<span class="p">;</span>
+	secret <span class="s2">"OoHkJl7vJN7vzS/QWDsbiw=="</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+options <span class="o">{</span>
+	default-key <span class="s2">"rndc-key"</span><span class="p">;</span>
+	default-server 127.0.0.1<span class="p">;</span>
+	default-port 953<span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+<span class="c"># End of rndc.conf</span>
+
+<span class="c"># Use with the following in named.conf, adjusting the allow list as needed:</span>
+<span class="c"># key "rndc-key" {</span>
+<span class="c"># 	algorithm hmac-md5;</span>
+<span class="c"># 	secret "OoHkJl7vJN7vzS/QWDsbiw==";</span>
+<span class="c"># };</span>
+<span class="c"># </span>
+<span class="c"># controls {</span>
+<span class="c"># 	inet 127.0.0.1 port 953</span>
+<span class="c"># 		allow { 127.0.0.1; } keys { "rndc-key"; };</span>
+<span class="c"># };</span>
+<span class="c"># End of named.conf</span>
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+
+<p><a href="https://book.douban.com/subject/2583522/">DNS and BIND, Fifth Edition 7.1.2 rndc and controls (BIND 9)</a></p>
+:ET

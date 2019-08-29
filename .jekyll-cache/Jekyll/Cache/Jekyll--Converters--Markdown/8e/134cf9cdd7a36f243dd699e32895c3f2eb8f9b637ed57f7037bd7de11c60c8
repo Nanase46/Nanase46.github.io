@@ -1,0 +1,208 @@
+I"7<h1 id="docker-镜像构建">Docker 镜像构建</h1>
+
+<p>Docker 的镜像构建算是 Docker 的一个重点，因为应用的交付就是通过镜像方式。<br />
+构建 Docker 镜像有 2 种方式：</p>
+
+<ul>
+  <li>手动构建</li>
+  <li>Dockerfile</li>
+</ul>
+
+<p>前面进行测试，运行了很多容器，下面我们将这些容器全部删除（此命令生产环境上慎用）</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# docker <span class="nb">kill</span> <span class="si">$(</span>docker ps <span class="nt">-a</span> <span class="nt">-q</span><span class="si">)</span>
+ed81da17ee16
+868a9e6b7aa0
+9e061b675f1a
+30fd50542bb5
+420066be5a1d
+7236cf1a985a
+Failed to <span class="nb">kill </span>container <span class="o">(</span>fa89f37d06f0<span class="o">)</span>: Error response from daemon: Cannot <span class="nb">kill </span>container fa89f37d06f0: Container fa89f37d06f01039025db83acd5af67ff90dd8c474d78872b4bf10ab3f354311 is not running
+<span class="c"># 这个容器并没有运行，所以 docker kill 会报错</span>
+<span class="o">[</span>root@linux-node1 ~]# docker <span class="nb">rm</span> <span class="si">$(</span>docker ps <span class="nt">-a</span> <span class="nt">-q</span><span class="si">)</span>
+ed81da17ee16
+868a9e6b7aa0
+9e061b675f1a
+30fd50542bb5
+420066be5a1d
+7236cf1a985a
+fa89f37d06f0
+<span class="o">[</span>root@linux-node1 ~]# docker ps <span class="nt">-a</span>
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+
+</code></pre></div></div>
+
+<h2 id="手动构建镜像">手动构建镜像</h2>
+
+<p>实质是运行一个容器后，进行相关处理，然后使用<code class="highlighter-rouge">docker commit</code>创建一个镜像。  
+下面演示手动构建一个基于 centos 镜像的 nginx 镜像。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 运行一个 centos 容器</span>
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">--name</span> mynginx <span class="nt">-it</span> centos
+
+<span class="c"># 安装阿里的 EPEL 源</span>
+<span class="o">[</span>root@a8ce8388eb81 /]# rpm <span class="nt">-ivh</span> http://mirrors.aliyun.com/epel/epel-release-latest-7.noarch.rpm
+Retrieving http://mirrors.aliyun.com/epel/epel-release-latest-7.noarch.rpm
+warning: /var/tmp/rpm-tmp.joxzhq: Header V3 RSA/SHA256 Signature, key ID 352c64e5: NOKEY
+Preparing...                          <span class="c">################################# [100%]</span>
+Updating / installing...
+   1:epel-release-7-8                 <span class="c">################################# [100%]</span>
+
+<span class="c"># 安装 nginx</span>
+<span class="o">[</span>root@a8ce8388eb81 /]# yum <span class="nb">install </span>nginx <span class="nt">-y</span>
+...省略...
+
+<span class="c"># 清除 yum 安装的缓存</span>
+<span class="o">[</span>root@a8ce8388eb81 /]# yum clean all
+Loaded plugins: fastestmirror, ovl
+Cleaning repos: base epel extras updates
+Cleaning up everything
+Cleaning up list of fastest mirrors
+
+<span class="c"># 配置 nginx 前台运行</span>
+<span class="o">[</span>root@a8ce8388eb81 /]# vi /etc/nginx/nginx.conf
+deamon off<span class="p">;</span> <span class="c"># 增加这一行配置</span>
+user nginx<span class="p">;</span>
+<span class="o">[</span>root@a8ce8388eb81 /]# <span class="nb">exit</span>
+
+<span class="c"># 使用 docker commit 创建镜像</span>
+<span class="o">[</span>root@linux-node1 ~]# docker commit <span class="nt">-m</span> <span class="s2">"My Nginx"</span> mynginx jaminzhang/mynginx:v1
+sha256:370e352e4ed5c7edb4b34f06c9f3713112381fb618046e9d19310bfb11ca4da4
+<span class="c"># 此处是本地提交，类似 git commit</span>
+
+<span class="c"># 使用 docker images 查看刚创建的 nginx 镜像</span>
+<span class="o">[</span>root@linux-node1 ~]# docker images
+REPOSITORY                  TAG                 IMAGE ID            CREATED             SIZE
+jaminzhang/mynginx          v1                  370e352e4ed5        20 seconds ago      261.9 MB
+docker.io/nginx             latest              4a88d06e26f4        3 days ago          183.5 MB
+docker.io/centos            latest              980e0e4c79ec        12 days ago         196.7 MB
+
+<span class="c"># 以刚才创建的 nginx 镜像运行一个容器</span>
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">--name</span> mynginxv1 <span class="nt">-d</span> <span class="nt">-p</span> 80:80 jaminzhang/mynginx:v1 nginx
+90714195490bf750007eb2a583679f03b94762c382276973b06c60f3f3c49368
+<span class="o">[</span>root@linux-node1 ~]# docker ps
+CONTAINER ID        IMAGE                   COMMAND             CREATED             STATUS              PORTS                NAMES
+90714195490b        jaminzhang/mynginx:v1   <span class="s2">"nginx"</span>             22 seconds ago      Up 20 seconds       0.0.0.0:80-&gt;80/tcp   mynginxv1
+
+<span class="c"># 然后通过浏览器测试访问</span>
+
+<span class="c"># 使用 docker logs mynginxv1 查看容器日志</span>
+<span class="o">[</span>root@linux-node1 ~]# docker logs <span class="nt">-f</span> mynginxv1
+
+<span class="c"># 访问时并没有在上面看到日志，因为默认 nginx 访问日志是配置在 /var/log/nginx/access.log 了，我们可以查看下</span>
+<span class="o">[</span>root@linux-node1 ~]#./docker_in.sh mynginxv1
+<span class="o">[</span>root@90714195490b /]# <span class="nb">tail</span> <span class="nt">-5</span> /var/log/nginx/access.log 
+192.168.56.1 - - <span class="o">[</span>19/Sep/2016:11:53:48 +0000] <span class="s2">"GET /nginx-logo.png HTTP/1.1"</span> 304 0 <span class="s2">"http://192.168.56.11/"</span> <span class="s2">"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36"</span> <span class="s2">"-"</span>
+192.168.56.1 - - <span class="o">[</span>19/Sep/2016:11:53:48 +0000] <span class="s2">"GET /poweredby.png HTTP/1.1"</span> 304 0 <span class="s2">"http://192.168.56.11/"</span> <span class="s2">"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36"</span> <span class="s2">"-"</span>
+192.168.56.1 - - <span class="o">[</span>19/Sep/2016:11:53:54 +0000] <span class="s2">"GET / HTTP/1.1"</span> 304 0 <span class="s2">"-"</span> <span class="s2">"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36"</span> <span class="s2">"-"</span>
+192.168.56.1 - - <span class="o">[</span>19/Sep/2016:11:53:54 +0000] <span class="s2">"GET /nginx-logo.png HTTP/1.1"</span> 304 0 <span class="s2">"http://192.168.56.11/"</span> <span class="s2">"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36"</span> <span class="s2">"-"</span>
+192.168.56.1 - - <span class="o">[</span>19/Sep/2016:11:53:54 +0000] <span class="s2">"GET /poweredby.png HTTP/1.1"</span> 304 0 <span class="s2">"http://192.168.56.11/"</span> <span class="s2">"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36"</span> <span class="s2">"-"</span>
+
+</code></pre></div></div>
+
+<h2 id="通过-dockerfile-构建镜像">通过 Dockerfile 构建镜像</h2>
+
+<p>下面演示将上面手动构建镜像过程改写成基于 Dockerfile 构建。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 创建镜像构建准备目录</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">mkdir</span> /opt/dockerfile
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cd</span> /opt/dockerfile
+<span class="o">[</span>root@linux-node1 dockerfile]# <span class="nb">mkdir </span>nginx
+<span class="o">[</span>root@linux-node1 dockerfile]# <span class="nb">cd </span>nginx 
+
+<span class="c"># 编写 Dockerfile</span>
+<span class="o">[</span>root@linux-node1 nginx]# vim Dockerfile
+<span class="c"># This Dockfile is used for nginx based on centos</span>
+
+<span class="c"># Base image</span>
+FROM centos
+
+<span class="c"># Maintainer</span>
+MAINTAINER Jamin Zhang zhangjamin@163.com
+
+<span class="c"># Commands</span>
+RUN rpm <span class="nt">-ivh</span> http://mirrors.aliyun.com/epel/epel-release-latest-7.noarch.rpm
+RUN yum <span class="nb">install </span>nginx <span class="nt">-y</span> <span class="o">&amp;&amp;</span> yum clean all
+RUN <span class="nb">echo</span> <span class="s2">"daemon off;"</span> <span class="o">&gt;&gt;</span> /etc/nginx/nginx.conf
+ADD index1.html /usr/share/nginx/html/index1.html
+EXPOSE 80
+CMD <span class="o">[</span><span class="s2">"nginx"</span><span class="o">]</span>
+
+<span class="c"># 以上还使用了 ADD 添加本地文件到镜像中，如果是压缩文件，ADD 还可以做解压缩操作。</span>
+<span class="c"># 准备一个 index1.html 测试文件</span>
+<span class="o">[</span>root@linux-node1 nginx]# <span class="nb">echo</span> <span class="s2">"nginx in Docker."</span> <span class="o">&gt;&gt;</span> index1.html
+
+<span class="c"># 以上 Dockerfile 详细说明在之后 Ref 中的文章有详细介绍，我这里就不再解释了。</span>
+<span class="c"># 这里暂时使用几个简单指令，就将上面手动构建镜像过程改写成了 Dockerfile。</span>
+
+<span class="c"># 使用 docker build 从 Dockerfile 构建镜像</span>
+<span class="o">[</span>root@linux-node1 nginx]# docker build <span class="nt">-t</span> jaminzhang/mynginx:v2 <span class="nb">.</span>
+Sending build context to Docker daemon 3.072 kB
+Step 1 : FROM centos
+ <span class="nt">---</span><span class="o">&gt;</span> 980e0e4c79ec
+Step 2 : MAINTAINER Jamin Zhang zhangjamin@163.com
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>6087f6aeff98
+ <span class="nt">---</span><span class="o">&gt;</span> 6a7aa317f098
+Removing intermediate container 6087f6aeff98
+Step 3 : RUN rpm <span class="nt">-ivh</span> http://mirrors.aliyun.com/epel/epel-release-latest-7.noarch.rpm
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>31955f1e721d
+warning: /var/tmp/rpm-tmp.7M1zBQ: Header V3 RSA/SHA256 Signature, key ID 352c64e5: NOKEY
+Retrieving http://mirrors.aliyun.com/epel/epel-release-latest-7.noarch.rpm
+Preparing...                          <span class="c">########################################</span>
+Updating / installing...
+epel-release-7-8                      <span class="c">########################################</span>
+ <span class="nt">---</span><span class="o">&gt;</span> f563b84895a3
+Removing intermediate container 31955f1e721d
+Step 4 : RUN yum <span class="nb">install </span>nginx <span class="nt">-y</span> <span class="o">&amp;&amp;</span> yum clean all
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>f06a0bf09545
+Loaded plugins: fastestmirror, ovl
+... 省略 ...
+Complete!
+Loaded plugins: fastestmirror, ovl
+Cleaning repos: base epel extras updates
+Cleaning up everything
+Cleaning up list of fastest mirrors
+ <span class="nt">---</span><span class="o">&gt;</span> 23bfc72bd0c2
+Removing intermediate container f06a0bf09545
+Step 5 : RUN <span class="nb">echo</span> <span class="s2">"daemon off;"</span> <span class="o">&gt;&gt;</span> /etc/nginx/nginx.conf
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>6cc9395e7c7d
+ <span class="nt">---</span><span class="o">&gt;</span> dd32cc906587
+Removing intermediate container 6cc9395e7c7d
+Step 6 : ADD index1.html /usr/share/nginx/html/index1.html
+ <span class="nt">---</span><span class="o">&gt;</span> c0b601df1ff1
+Removing intermediate container 4545930b1402
+Step 7 : EXPOSE 80
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>bf5569b609b4
+ <span class="nt">---</span><span class="o">&gt;</span> d180626f3b15
+Removing intermediate container bf5569b609b4
+Step 8 : CMD nginx
+ <span class="nt">---</span><span class="o">&gt;</span> Running <span class="k">in </span>660a9016ec6f
+ <span class="nt">---</span><span class="o">&gt;</span> 41ae8a732748
+Removing intermediate container 660a9016ec6f
+Successfully built 41ae8a732748
+
+<span class="c"># 以上构建镜像完成，我们查看下</span>
+<span class="o">[</span>root@linux-node1 nginx]# docker images
+REPOSITORY                  TAG                 IMAGE ID            CREATED             SIZE
+jaminzhang/mynginx          v2                  41ae8a732748        2 minutes ago       278.9 MB
+jaminzhang/mynginx          v1                  370e352e4ed5        20 hours ago        261.9 MB
+docker.io/nginx             latest              4a88d06e26f4        4 days ago          183.5 MB
+docker.io/centos            latest              980e0e4c79ec        13 days ago         196.7 MB
+
+<span class="c"># 从刚才创建的镜像运行容器并访问测试</span>
+<span class="o">[</span>root@linux-node1 nginx]# docker run <span class="nt">--name</span> mynginxv2 <span class="nt">-d</span> <span class="nt">-p</span> 81:80 mynginx:v2
+93045710a0314528af9b01468c1dd9742bb20f0020d7fc1f82d10c3196e8292f
+<span class="o">[</span>root@linux-node1 nginx]# docker port mynginxv2
+80/tcp -&gt; 0.0.0.0:81
+<span class="o">[</span>root@linux-node1 nginx]# curl <span class="s2">"http://192.168.56.11:81/index1.html"</span>
+nginx <span class="k">in </span>Docker.
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://mp.weixin.qq.com/s?__biz=MzIxMDAwOTcwMA==&amp;mid=2247483818&amp;idx=1&amp;sn=4a49793b166be681ce62857132dfdfbf&amp;chksm=976a6aa1a01de3b72c3fa45c5d4fa4abb35bab99b7fd9e7ad640c2da83aef46d12ffedda64e6&amp;scene=23&amp;srcid=09202NJJspBHWhx3Ri1HjMUB#rd">一张图就能学会 Dockerfile 你知道吗？</a><br />
+<a href="https://yeasy.gitbooks.io/docker_practice/content/dockerfile/instructions.html">Dockerfile 指令</a></p>
+:ET

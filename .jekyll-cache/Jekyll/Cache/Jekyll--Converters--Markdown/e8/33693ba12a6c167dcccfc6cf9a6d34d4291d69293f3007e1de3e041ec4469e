@@ -1,0 +1,196 @@
+I"}<p>Elasticsearch 配置使用</p>
+
+<h1 id="elasticsearch-简介">Elasticsearch 简介</h1>
+
+<pre>
+
+Elasticsearch 是一个基于 Apache Lucene(TM) 的开源搜索引擎。
+无论在开源还是专有领域，Lucene 可以被认为是迄今为止最先进、性能最好的、功能最全的搜索引擎库。
+
+Elasticsearch 也使用 Java 开发并使用 Lucene 作为其核心来实现所有索引和搜索的功能，
+但是它的目的是通过简单的 RESTful API 来隐藏 Lucene 的复杂性，从而让全文搜索变得简单。
+
+不过，Elasticsearch 不仅仅是 Lucene 和全文搜索，我们还能这样去描述它：
+
+* 分布式的实时文件存储，每个字段都被索引并可被搜索
+* 分布式的实时分析搜索引擎
+* 可以扩展到上百台服务器，处理 PB 级结构化或非结构化数据
+
+</pre>
+
+<h1 id="elasticsearch-配置">Elasticsearch 配置</h1>
+
+<p>ES 在之前的 ELK 快速安装中已经安装好了。</p>
+
+<p>下面我们来进行配置。</p>
+
+<p>ES 配置文件 <code class="highlighter-rouge">/etc/elasticsearch/elasticsearch.yml</code>，如下配置</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nb">grep</span> <span class="s2">"^[a-Z]"</span> /etc/elasticsearch/elasticsearch.yml  
+cluster.name: myes		<span class="c"># 集群名称，名称相同即属于同一个集群</span>
+node.name: linux-node1	<span class="c"># 本机在集群的内的名称</span>
+path.data: /data/es-data	<span class="c"># 保存数据的目录，此目录空间要大，IO 要高，</span>
+path.logs: /var/log/elasticsearch	<span class="c"># 保存日志的目录</span>
+bootstrap.mlockall: <span class="nb">true</span>	<span class="c"># 服务启动的时候锁定内存，防止写入 swap</span>
+network.host: 192.168.56.11	<span class="c"># 监听地址</span>
+http.port: 9200			<span class="c"># 监听端口</span>
+<span class="c">#discovery.zen.ping.unicast.hosts: ["192.168.56.11", "192.168.56.12"] </span>
+<span class="c"># 创建集群的时候组播地址，用于广播无效的情况下，可以只用在一台 ES 上配置所有 ES 节点</span>
+
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">path.data: /data/es-data</code> 此目录先要创建好，并设置好属主</p>
+
+<blockquote>
+
+  <p>mkdir -p /data/es-data<br />
+chown -R elasticsearch.elasticsearch /data/es-data</p>
+</blockquote>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 启动 ES</span>
+
+systemctl start elasticsearch
+
+<span class="c"># 测试</span>
+
+<span class="o">[</span>root@linux-node1 ~]# curl <span class="nt">-i</span> <span class="nt">-XGET</span> <span class="s1">'http://192.168.56.11:9200/'</span>
+HTTP/1.1 200 OK
+Content-Type: application/json<span class="p">;</span> <span class="nv">charset</span><span class="o">=</span>UTF-8
+Content-Length: 311
+
+<span class="o">{</span>
+  <span class="s2">"name"</span> : <span class="s2">"linux-node1"</span>,
+  <span class="s2">"cluster_name"</span> : <span class="s2">"myes"</span>,
+  <span class="s2">"version"</span> : <span class="o">{</span>
+    <span class="s2">"number"</span> : <span class="s2">"2.3.5"</span>,
+    <span class="s2">"build_hash"</span> : <span class="s2">"90f439ff60a3c0f497f91663701e64ccd01edbb4"</span>,
+    <span class="s2">"build_timestamp"</span> : <span class="s2">"2016-07-27T10:36:52Z"</span>,
+    <span class="s2">"build_snapshot"</span> : <span class="nb">false</span>,
+    <span class="s2">"lucene_version"</span> : <span class="s2">"5.5.0"</span>
+  <span class="o">}</span>,
+  <span class="s2">"tagline"</span> : <span class="s2">"You Know, for Search"</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h1 id="es-集群">ES 集群</h1>
+
+<p>按照上面步骤完成 linux-node2 上的 ES 安装并启动。  
+Elasticsearch 为分布式而生，而且它的设计隐藏了分布式本身的复杂性。<br />
+当完成 linux-node2 的配置，它就自动加入了 myes 集群。<br />
+默认情况下 ES 是使用组包的方式通信的，也就是看其他节点是不是同一个在 cluster name 下，并选举一个主节点。</p>
+
+<h2 id="集群健康">集群健康</h2>
+
+<p>使用如下 API 访问：</p>
+
+<blockquote>
+
+  <p>curl -XGET ‘http://192.168.56.11:9200/_cluster/health?pretty=true’</p>
+</blockquote>
+
+<blockquote>
+
+  <p>其他监控系统可以通过此 API 来监控 ES 集群健康状态。</p>
+</blockquote>
+
+<h1 id="es-安装插件">ES 安装插件</h1>
+
+<p>插件是为了完成不同的功能，官方提供了一些插件但是是收费的，<br />
+另外也有一些开发爱好者提供的插件，可以实现对 ES 集群的状态监控与管理配置等功能。</p>
+
+<h2 id="安装-head-插件">安装 head 插件</h2>
+
+<pre>
+
+elasticsearch-head
+A web front end for an elastic search cluster
+
+</pre>
+
+<blockquote>
+
+  <p>/usr/share/elasticsearch/bin/plugin install mobz/elasticsearch-head</p>
+</blockquote>
+
+<p>安装完成后通过浏览器访问 <code class="highlighter-rouge">http://192.168.56.11:9200/_plugin/head/</code></p>
+
+<p>下面我们创建 index 数据，如下图示：</p>
+
+<p><img src="http://jaminzhang.github.io/images/ELK/head-put-index-data.png" alt="head-put-index-data" /></p>
+
+<p>以下图示 head 插件的使用：</p>
+
+<p><img src="http://jaminzhang.github.io/images/ELK/head-cluster-nodes-info.png" alt="head-cluster-nodes-info" /></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>颜色</th>
+      <th>意义</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>green</td>
+      <td>所有主要分片和复制分片都可用</td>
+    </tr>
+    <tr>
+      <td>yellow</td>
+      <td>所有主要分片可用，但不是所有复制分片都可用</td>
+    </tr>
+    <tr>
+      <td>red</td>
+      <td>不是所有的主要分片都可用</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><img src="http://jaminzhang.github.io/images/ELK/head-cluster-nodes-info-02.png" alt="head-cluster-nodes-info-02" /></p>
+
+<h2 id="安装-kopf-插件">安装 kopf 插件</h2>
+
+<pre>
+
+kopf is a simple web administration tool for elasticsearch 
+written in JavaScript + AngularJS + jQuery + Twitter bootstrap.
+
+It offers an easy way of performing common tasks on an elasticsearch cluster. 
+Not every single API is covered by this plugin, but it does offer a REST client 
+which allows you to explore the full potential of the ElasticSearch API.
+
+</pre>
+
+<blockquote>
+
+  <p>/usr/share/elasticsearch/bin/plugin install lmenezes/elasticsearch-kopf</p>
+</blockquote>
+
+<p>安装完成后通过浏览器访问 <code class="highlighter-rouge">http://192.168.56.11:9200/_plugin/kopf/</code></p>
+
+<h2 id="其他插件">其他插件</h2>
+
+<ul>
+  <li>Marvel 插件</li>
+</ul>
+
+<pre>
+
+Marvel 是 Elasticsearch 的管理和监控工具，在开发环境下免费使用。
+它包含了一个叫做 Sense 的交互式控制台，使用户方便的通过浏览器直接与 Elasticsearch 进行交互。
+
+Elasticsearch 线上文档中的很多示例代码都附带一个 View in Sense 的链接。点击进去，就会在 Sense 控制台打开相应的实例。
+
+</pre>
+
+<ul>
+  <li>bigdesk 插件
+(elasticsearch-2.3.5-1 上不能安装)</li>
+</ul>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://es.xiaoleilu.com/010_Intro/05_What_is_it.html">Elasticsearch 权威指南（中文版）</a><br />
+<a href="https://github.com/mobz/elasticsearch-head">elasticsearch-head</a><br />
+<a href="https://github.com/lmenezes/elasticsearch-kopf">elasticsearch-kopf</a></p>
+:ET

@@ -1,0 +1,194 @@
+I"*4<p>Logstash 使用 Grok 收集 Apache 日志</p>
+
+<h1 id="logstash-filter-插件-grok-简介">Logstash Filter 插件 Grok 简介</h1>
+
+<p>Grok 插件能够解析任意的文本和结构化它们。<br />
+Grok 是当前在 Logstash 中最好的方式将糟糕的非结构化的日志数据解析成结构化的和可查询的。  
+这个工具对于以下日志非常适用： 
+syslog 日志，Apache 和其他一些 Webserver 日志，mysql 日志，
+还有其他通常是任何人类可读但不是计算机消费的日志格式。  
+Logstash 默认自带了大约 120 种匹配模式。<br />
+如果你需要构建模式匹配你自己的日志，你可以使用下面 2 个有用的工具应用。<br />
+http://grokdebug.herokuapp.com
+http://grokconstructor.appspot.com/</p>
+
+<p>Nginx 的访问日志本身支持 JSON 格式，Logstash 也有 Input 的 JSON 插件。
+但 Apache 默认的访问日志格式本身并不支持 JSON，可以使用本文谈到的 Filter Grok 插件来对其进行格式化后再写入 ES 中。</p>
+
+<h1 id="1-前台测试-logstash-grok-插件过滤-apache-访问日志">1. 前台测试 Logstash Grok 插件过滤 Apache 访问日志</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 192.168.56.11 上安装 httpd</span>
+
+yum <span class="nb">install </span>httpd <span class="nt">-y</span>
+
+<span class="c"># 查看 /etc/httpd/conf/httpd.conf 配置文件 LogFormat 定义部分</span>
+
+    LogFormat <span class="s2">"%h %l %u %t </span><span class="se">\"</span><span class="s2">%r</span><span class="se">\"</span><span class="s2"> %&gt;s %b </span><span class="se">\"</span><span class="s2">%{Referer}i</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"</span><span class="s2">%{User-Agent}i</span><span class="se">\"</span><span class="s2">"</span> combined
+    LogFormat <span class="s2">"%h %l %u %t </span><span class="se">\"</span><span class="s2">%r</span><span class="se">\"</span><span class="s2"> %&gt;s %b"</span> common
+
+<span class="c"># 启动 httpd</span>
+
+systemclt start httpd
+
+<span class="c"># 我们可以先看看 grok 自带的预定义的匹配模式</span>
+
+<span class="o">[</span>root@linux-node2 patterns]# <span class="nb">pwd</span>
+/opt/logstash/vendor/bundle/jruby/1.9/gems/logstash-patterns-core-2.0.5/patterns
+<span class="o">[</span>root@linux-node2 patterns]# ll
+total 96
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 1197 Jul  7 08:02 aws
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 4831 Jul  7 08:02 bacula
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 2154 Jul  7 08:02 bro
+<span class="nt">-rw-r--r--</span> 1 logstash logstash  879 Jul  7 08:02 exim
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 9544 Jul  7 08:02 firewalls
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 6008 Jul  7 08:02 grok-patterns
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 3251 Jul  7 08:02 haproxy
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 1339 Jul  7 08:02 java
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 1087 Jul  7 08:02 junos
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 1037 Jul  7 08:02 linux-syslog
+<span class="nt">-rw-r--r--</span> 1 logstash logstash   49 Jul  7 08:02 mcollective
+<span class="nt">-rw-r--r--</span> 1 logstash logstash  190 Jul  7 08:02 mcollective-patterns
+<span class="nt">-rw-r--r--</span> 1 logstash logstash  614 Jul  7 08:02 mongodb
+<span class="nt">-rw-r--r--</span> 1 logstash logstash 9597 Jul  7 08:02 nagios
+<span class="nt">-rw-r--r--</span> 1 logstash logstash  142 Jul  7 08:02 postgresql
+<span class="nt">-rw-r--r--</span> 1 logstash logstash  845 Jul  7 08:02 rails
+<span class="nt">-rw-r--r--</span> 1 logstash logstash  104 Jul  7 08:02 redis
+<span class="nt">-rw-r--r--</span> 1 logstash logstash  188 Jul  7 08:02 ruby
+
+<span class="c"># 其中 Apache 访问日志的匹配模式在 grok-patterns 文件中有定义</span>
+
+<span class="o">[</span>root@linux-node2 patterns]# <span class="nb">grep </span>APACHE grok-patterns 
+COMMONAPACHELOG %<span class="o">{</span>IPORHOST:clientip<span class="o">}</span> %<span class="o">{</span>HTTPDUSER:ident<span class="o">}</span> %<span class="o">{</span>USER:auth<span class="o">}</span> <span class="se">\[</span>%<span class="o">{</span>HTTPDATE:timestamp<span class="o">}</span><span class="se">\]</span> <span class="s2">"(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})"</span> %<span class="o">{</span>NUMBER:response<span class="o">}</span> <span class="o">(</span>?:%<span class="o">{</span>NUMBER:bytes<span class="o">}</span>|-<span class="o">)</span>
+COMBINEDAPACHELOG %<span class="o">{</span>COMMONAPACHELOG<span class="o">}</span> %<span class="o">{</span>QS:referrer<span class="o">}</span> %<span class="o">{</span>QS:agent<span class="o">}</span>
+
+<span class="c"># 下面编写 Grok 匹配过滤 Apache 日志的 Logstash 配置文件</span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# <span class="nb">cat </span>grok.conf 
+input <span class="o">{</span>
+  stdin <span class="o">{}</span>
+<span class="o">}</span>
+
+filter <span class="o">{</span>
+  grok <span class="o">{</span>
+    match <span class="o">=&gt;</span> <span class="o">{</span> <span class="s2">"message"</span> <span class="o">=&gt;</span> <span class="s2">"%{COMBINEDAPACHELOG}"</span> <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  stdout <span class="o">{</span>
+    codec <span class="o">=&gt;</span> rubydebug
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c"># 先在前台运行 Logstash，然后在标准输入和输出测试</span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# /opt/logstash/bin/logstash <span class="nt">-f</span> grok.conf 
+Settings: Default pipeline workers: 1
+Pipeline main started
+192.168.56.1 - - <span class="o">[</span>09/Oct/2016:17:54:34 +0800] <span class="s2">"GET /piwik/piwik.js HTTP/1.1"</span> 404 212 <span class="s2">"http://jaminzhang.github.io/"</span> <span class="s2">"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36"</span>
+<span class="o">{</span>
+        <span class="s2">"message"</span> <span class="o">=&gt;</span> <span class="s2">"192.168.56.1 - - [09/Oct/2016:17:54:34 +0800] </span><span class="se">\"</span><span class="s2">GET /piwik/piwik.js HTTP/1.1</span><span class="se">\"</span><span class="s2"> 404 212 </span><span class="se">\"</span><span class="s2">http://jaminzhang.github.io/</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"</span><span class="s2">Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36</span><span class="se">\"</span><span class="s2">"</span>,
+       <span class="s2">"@version"</span> <span class="o">=&gt;</span> <span class="s2">"1"</span>,
+     <span class="s2">"@timestamp"</span> <span class="o">=&gt;</span> <span class="s2">"2016-10-11T03:55:48.699Z"</span>,
+           <span class="s2">"host"</span> <span class="o">=&gt;</span> <span class="s2">"linux-node1"</span>,
+       <span class="s2">"clientip"</span> <span class="o">=&gt;</span> <span class="s2">"192.168.56.1"</span>,
+          <span class="s2">"ident"</span> <span class="o">=&gt;</span> <span class="s2">"-"</span>,
+           <span class="s2">"auth"</span> <span class="o">=&gt;</span> <span class="s2">"-"</span>,
+      <span class="s2">"timestamp"</span> <span class="o">=&gt;</span> <span class="s2">"09/Oct/2016:17:54:34 +0800"</span>,
+           <span class="s2">"verb"</span> <span class="o">=&gt;</span> <span class="s2">"GET"</span>,
+        <span class="s2">"request"</span> <span class="o">=&gt;</span> <span class="s2">"/piwik/piwik.js"</span>,
+    <span class="s2">"httpversion"</span> <span class="o">=&gt;</span> <span class="s2">"1.1"</span>,
+       <span class="s2">"response"</span> <span class="o">=&gt;</span> <span class="s2">"404"</span>,
+          <span class="s2">"bytes"</span> <span class="o">=&gt;</span> <span class="s2">"212"</span>,
+       <span class="s2">"referrer"</span> <span class="o">=&gt;</span> <span class="s2">"</span><span class="se">\"</span><span class="s2">http://jaminzhang.github.io/</span><span class="se">\"</span><span class="s2">"</span>,
+          <span class="s2">"agent"</span> <span class="o">=&gt;</span> <span class="s2">"</span><span class="se">\"</span><span class="s2">Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36</span><span class="se">\"</span><span class="s2">"</span>
+<span class="o">}</span>
+
+<span class="c"># 可以从上面的标准输出中看到 Grok 匹配过滤生效了。</span>
+
+</code></pre></div></div>
+
+<blockquote>
+
+  <p>生产上使用 Grok 插件时需考虑过滤时的性能影响，有一种用法是用 Python 等程序来实现日志过滤，<br />
+运行多个 Python 程序来提高性能。</p>
+</blockquote>
+
+<h1 id="2-前台方式测试-logstash-能正常收集-apache-日志">2. 前台方式测试 Logstash 能正常收集 Apache 日志</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 下面继续编写 Logstash 配置文件，将实际的 Apache 访问日志文件作为 Input </span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# <span class="nb">cat </span>apache_grok.conf
+input <span class="o">{</span>
+  file <span class="o">{</span>
+    path <span class="o">=&gt;</span> <span class="s2">"/var/log/httpd/access_log"</span>
+    start_position <span class="o">=&gt;</span> <span class="s2">"beginning"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+filter <span class="o">{</span>
+  grok <span class="o">{</span>
+    match <span class="o">=&gt;</span> <span class="o">{</span> <span class="s2">"message"</span> <span class="o">=&gt;</span> <span class="s2">"%{COMBINEDAPACHELOG}"</span> <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  stdout <span class="o">{</span>
+    codec <span class="o">=&gt;</span> rubydebug
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# /opt/logstash/bin/logstash <span class="nt">-f</span> apache_grok.conf
+
+<span class="c"># 如果配置正确，前台启动后，会读取 Apache 访问日志文件并过滤解析输出到标准输出</span>
+
+</code></pre></div></div>
+
+<h1 id="3-测试运行-logstash-能正常收集-apache-日志并写入到-es">3. 测试运行 Logstash 能正常收集 Apache 日志并写入到 ES</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 继续修改 apache_grok.conf，配置 output 输出到 ES 中，如下</span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# <span class="nb">cat </span>apache_grok.conf 
+input <span class="o">{</span>
+  file <span class="o">{</span>
+    path <span class="o">=&gt;</span> <span class="s2">"/var/log/httpd/access_log"</span>
+    start_position <span class="o">=&gt;</span> <span class="s2">"beginning"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+filter <span class="o">{</span>
+  grok <span class="o">{</span>
+    match <span class="o">=&gt;</span> <span class="o">{</span> <span class="s2">"message"</span> <span class="o">=&gt;</span> <span class="s2">"%{COMBINEDAPACHELOG}"</span> <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  elasticsearch <span class="o">{</span>
+    hosts <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"192.168.56.11:9200"</span><span class="o">]</span>
+    index <span class="o">=&gt;</span> <span class="s2">"apache-access-log-%{+YYYY.MM.dd}"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# /opt/logstash/bin/logstash <span class="nt">-f</span> apache_grok.conf
+
+<span class="c"># 启动 Logstash 后，使用 ab 产生一些 Apache 200 和 404 的访问日志</span>
+
+<span class="o">[</span>root@linux-node1 conf.d]# ab <span class="nt">-n</span> 1000 <span class="nt">-c</span> 10 http://192.168.56.11:80/
+<span class="o">[</span>root@linux-node1 conf.d]# ab <span class="nt">-n</span> 500 <span class="nt">-c</span> 10 http://192.168.56.11:80/404
+
+<span class="c"># 然后在 ES head 插件中确认索引及数据是否写入。确认好后，在 Kibana 中配置。</span>
+
+</code></pre></div></div>
+
+<h1 id="4-kibana-中添加索引并配置一个饼图">4. Kibana 中添加索引并配置一个饼图</h1>
+
+<p><img src="http://jaminzhang.github.io/images/ELK/Kibana-Configure-apache-index-pattern.png" alt="Kibana-Configure-apache-index-pattern" /><br />
+<img src="http://jaminzhang.github.io/images/ELK/Kibana-Pie-chart-01.png" alt="Kibana-Pie-chart-01" /><br />
+<img src="http://jaminzhang.github.io/images/ELK/Kibana-Pie-chart-02.png" alt="Kibana-Pie-chart-02" /></p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.elastic.co/guide/en/logstash/current/plugins-filters-grok.html">Logstash Reference [2.4] » Filter plugins » grok</a></p>
+:ET

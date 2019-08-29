@@ -1,0 +1,79 @@
+I"	<h1 id="编写收集-tcp-日志的-logstash-配置文件">编写收集 TCP 日志的 Logstash 配置文件</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node2 ~]# <span class="nb">cat</span> /etc/logstash/conf.d/tcp.conf 
+input <span class="o">{</span>
+  tcp <span class="o">{</span>
+    <span class="nb">type</span> <span class="o">=&gt;</span> <span class="s2">"tcp"</span>
+    port <span class="o">=&gt;</span> 6666
+    mode <span class="o">=&gt;</span> <span class="s2">"server"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  stdout <span class="o">{</span>
+    codec <span class="o">=&gt;</span> rubydebug
+  <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<h1 id="前台方式测试-logstash-是否正常收集-tcp-日志">前台方式测试 Logstash 是否正常收集 TCP 日志</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 前台方式启动，输出到标准输出，先确保能收集</span>
+
+<span class="o">[</span>root@linux-node2 conf.d]# /opt/logstash/bin/logstash <span class="nt">-f</span> tcp.conf 
+Settings: Default pipeline workers: 1
+Pipeline main started
+
+<span class="c"># 启动 logstash 后，可以看到在监听上面配置的 6666 端口</span>
+<span class="o">[</span>root@linux-node2 ~]# netstat <span class="nt">-lntup</span> | <span class="nb">grep </span>6666
+tcp        0      0 0.0.0.0:6666            0.0.0.0:<span class="k">*</span>               LISTEN      41206/java 
+
+<span class="c"># 在 192.168.56.11 上使用 nc 等方式发送测试信息到 logstash</span>
+
+<span class="o">[</span>root@linux-node1 ~]# yum <span class="nb">install </span>nc <span class="nt">-y</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">echo</span> <span class="s2">"Test Logstash TCP Input Plugin"</span> | nc 192.168.56.12 6666
+<span class="o">[</span>root@linux-node1 ~]# nc 192.168.56.12 6666 &lt; /etc/resolv.conf
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">echo</span> <span class="s2">"Test Logstash TCP Input Plugin 02"</span> <span class="o">&gt;</span> /dev/tcp/192.168.56.12/6666
+
+<span class="c"># 确认 logstash 前台运行时标准输出可以接收到 TCP 日志后，</span>
+<span class="c"># 我们再将 logstash 配置文件 syslog.conf 中的 output 部分修改如下（这样将收集到的 TCP 日志写入到 ES）:</span>
+
+<span class="o">[</span>root@linux-node2 ~]# <span class="nb">cat</span> /etc/logstash/conf.d/tcp.conf 
+input <span class="o">{</span>
+  tcp <span class="o">{</span>
+    <span class="nb">type</span> <span class="o">=&gt;</span> <span class="s2">"tcp"</span>
+    port <span class="o">=&gt;</span> 6666
+    mode <span class="o">=&gt;</span> <span class="s2">"server"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+  elasticsearch <span class="o">{</span>
+    hosts <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"192.168.56.12:9200"</span><span class="o">]</span>
+    index <span class="o">=&gt;</span> <span class="s2">"tcp-log-%{+YYYY.MM}"</span>    
+  <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<h1 id="后台运行-logstash确认索引数据写入到-es">后台运行 Logstash，确认索引数据写入到 ES</h1>
+
+<p>重启运行 Logstash，然后在 ES head 插件中确认索引及数据是否写入。</p>
+
+<h1 id="kibana-中配置索引">Kibana 中配置索引</h1>
+
+<p>确认数据写入 ES 后，在 Kibana 中添加配置索引。</p>
+
+<blockquote>
+
+  <p>通过 TCP 方式发送日志的一个用途是不用启动一个 Agent 然后进行 Logstash 配置，就可以简单地回补丢失的重要的日志数据。
+ES 中日志没有顺序的概念。写入 ES 的日志一般是乱序的。</p>
+</blockquote>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.elastic.co/guide/en/logstash/current/plugins-inputs-tcp.html">TCP</a></p>
+
+:ET

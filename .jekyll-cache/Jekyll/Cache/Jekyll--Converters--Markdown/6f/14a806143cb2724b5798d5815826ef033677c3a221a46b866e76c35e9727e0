@@ -1,0 +1,77 @@
+I"�<h2 id="引言">引言</h2>
+
+<p>想对某些网络设备（路由器、交换机等）进行监控时，其不支持安装监控 Agent ，但一般都支持 SNMP 方式的监控。<br />
+所以现在来重新学习下 SNMP 原理与安装配置。</p>
+
+<h2 id="snmp-简介">SNMP 简介</h2>
+
+<pre>
+
+Simple Network Management Protocol (SNMP) is an Internet-standard protocol 
+for collecting and organizing information about managed devices on IP networks 
+and for modifying that information to change device behavior. 
+Devices that typically support SNMP 
+include routers, switches, servers, workstations, printers, modem racks and more.  
+
+</pre>
+
+<h2 id="1-安装配置-snmp">1 安装配置 snmp</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 1. 安装 snmp 相关包组</span>
+
+yum list | <span class="nb">grep </span>snmp
+yum <span class="nb">install </span>net-snmp net-snmp-utils <span class="nt">-y</span>
+
+<span class="c"># 2. 配置 snmpd.conf</span>
+
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cat</span> /etc/snmp/snmpd.conf
+rocommunity	jaminzhang	127.0.0.1
+rocommunity	jaminzhang	192.168.56.11
+
+<span class="c"># 3. 启动 snmpd</span>
+
+<span class="o">[</span>root@linux-node1 ~]# systemctl start snmpd
+<span class="o">[</span>root@linux-node1 ~]# netstat <span class="nt">-lntup</span> | <span class="nb">grep </span>snmp
+tcp        0      0 127.0.0.1:199           0.0.0.0:<span class="k">*</span>               LISTEN      28604/snmpd         
+udp        0      0 0.0.0.0:161             0.0.0.0:<span class="k">*</span>                           28604/snmpd  
+
+<span class="c"># 4. 测试 snmp 获取数据</span>
+
+<span class="o">[</span>root@linux-node1 ~]# snmpget <span class="nt">-v2c</span> <span class="nt">-c</span> jaminzhang 192.168.56.11 1.3.6.1.2.1.1.3.0
+DISMAN-EVENT-MIB::sysUpTimeInstance <span class="o">=</span> Timeticks: <span class="o">(</span>11110<span class="o">)</span> 0:01:51.10
+<span class="o">[</span>root@linux-node1 ~]# snmpget <span class="nt">-v2c</span> <span class="nt">-c</span> jaminzhang 192.168.56.11 1.3.6.1.4.1.2021.10.1.3.1
+UCD-SNMP-MIB::laLoad.1 <span class="o">=</span> STRING: 0.00
+<span class="o">[</span>root@linux-node1 ~]# snmpwalk <span class="nt">-v2c</span> <span class="nt">-c</span> jaminzhang 192.168.56.11 1.3.6.1.4.1.2021.10.1.3
+UCD-SNMP-MIB::laLoad.1 <span class="o">=</span> STRING: 0.15
+UCD-SNMP-MIB::laLoad.2 <span class="o">=</span> STRING: 0.07
+UCD-SNMP-MIB::laLoad.3 <span class="o">=</span> STRING: 0.06
+
+</code></pre></div></div>
+
+<h2 id="2--snmp-协议概念及参考资料">2  SNMP 协议概念及参考资料</h2>
+
+<p>Management information base (MIB)
+Object identifier (OID)</p>
+
+<p>SNMP protocol data unit (PDU) types:</p>
+<ul>
+  <li>GetRequest</li>
+  <li>SetRequest</li>
+  <li>GetNextRequest</li>
+  <li>GetBulkRequest</li>
+  <li>Response</li>
+  <li>Trap</li>
+  <li>InformRequest</li>
+</ul>
+
+<p><strong>SNMP 相关参考资料</strong><br />
+<a href="https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol">Simple Network Management Protocol - Wiki</a><br />
+<a href="https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol">Simple Network Management Protocol</a><br />
+<a href="http://net-snmp.sourceforge.net/wiki/index.php/TUT:SNMP">SNMP PDU</a><br />
+<a href="https://book.douban.com/subject/25957954/">《Zabbix 企业级分布式监控系统》7.5 SNMP 监控方式</a><br />
+<a href="http://linux.chinaunix.net/techdoc/net/2008/08/21/1026818.shtml">SNMP 常用 OID</a><br />
+<a href="http://www.ibm.com/developerworks/cn/linux/l-cn-snmp/index.html">浅谈 Linux 系统中的 SNMP Trap</a><br />
+<a href="http://www.jiankongbao.com/search/snmp">配置 snmp</a></p>
+
+:ET

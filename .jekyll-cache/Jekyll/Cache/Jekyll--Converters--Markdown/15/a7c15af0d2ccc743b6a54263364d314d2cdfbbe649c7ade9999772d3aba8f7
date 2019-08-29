@@ -1,0 +1,85 @@
+I"�!<h1 id="模块">模块</h1>
+
+<ul>
+  <li>实际上一个 Python 模块是一个 Python 脚本文件。</li>
+  <li>一个 Python 包是一个包含了 Python 脚本文件(至少包含有 <code class="highlighter-rouge">__init__.py</code> 文件)的目录。</li>
+  <li>Python 包中的 <code class="highlighter-rouge">__init__.py</code> 文件内容可以为空或包含 Python 代码。</li>
+  <li>包可以嵌套，就是对应于文件系统中目录包含子目录。</li>
+</ul>
+
+<p><img src="http://jaminzhang.github.io/images/Python/Python-Modules.png" alt="Python-Modules" /></p>
+
+<h1 id="模块导入">模块导入</h1>
+
+<ul>
+  <li>大型程序包含多个 Python 文件，也就是包含多个模块。</li>
+  <li>文件之间的函数调用可以通过模块导入来实现。</li>
+  <li>文件 A 要使用文件 B 中的函数，需要事先将文件 B 中的函数导入到文件 A 中来，这就是所谓的模块导入。</li>
+  <li>在 Python 中，一个变量名或一个函数名在一个模块中（一个 Python 文件中），要么在这个文件中定义，要么通过其他模块导入过。
+也就是说明这个变量名或函数名来自哪里。</li>
+</ul>
+
+<h2 id="模块导入规则">模块导入规则</h2>
+
+<p>模块导入的关键是定位模块，定位规则如下：</p>
+
+<ol>
+  <li>跟入口文件在同一个目录下的模块或包能被找到。</li>
+  <li>根据被导入的模块和当前模块的路径关系来定位导入。</li>
+</ol>
+
+<ul>
+  <li>. 表示在当前模块所在的包下。（当前模块是代码所在的文件）</li>
+  <li>.. 表示在当前模块的所在包的外层目录下。</li>
+</ul>
+
+<p>模块导入时，代码会运行一次。再次导入时，不会再次运行。</p>
+
+<p><img src="http://jaminzhang.github.io/images/Python/Python-Modules-Import.png" alt="Python-Modules-Import" /></p>
+
+<h2 id="python-2-的导入特性不推荐">Python 2 的导入特性（不推荐）</h2>
+
+<ul>
+  <li>import 语句所在模块的”同包模块”（即在同一个目录下 Python 文件）可以直接被找到。</li>
+</ul>
+
+<p><code class="highlighter-rouge">from input import get_input</code></p>
+
+<ul>
+  <li>了解这个用法，但是不建议使用。（因为不适用于 Python 3 ）</li>
+</ul>
+
+<h2 id="模块相关技巧">模块相关技巧</h2>
+
+<h3 id="dir模块">dir(模块)</h3>
+
+<p>可以查看模块可使用的属性（可能是一个常量或一个函数，本质上是一个变量，内容上是一个常量或函数 ）。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">sys</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">dir</span><span class="p">(</span><span class="n">sys</span><span class="p">)</span>
+<span class="p">[</span><span class="s">'__displayhook__'</span><span class="p">,</span> <span class="s">'__doc__'</span><span class="p">,</span> <span class="s">'__excepthook__'</span><span class="p">,</span> <span class="s">'__name__'</span><span class="p">,</span> <span class="s">'__package__'</span><span class="p">,</span> <span class="s">'__stderr__'</span><span class="p">,</span> <span class="s">'__stdin__'</span><span class="p">,</span> <span class="s">'__stdout__'</span><span class="p">,</span> <span class="s">'_clear_type_cache'</span><span class="p">,</span> <span class="s">'_current_frames'</span><span class="p">,</span> <span class="s">'_getframe'</span><span class="p">,</span> <span class="s">'api_version'</span><span class="p">,</span> <span class="s">'argv'</span><span class="p">,</span> <span class="s">'builtin_module_names'</span><span class="p">,</span> <span class="s">'byteorder'</span><span class="p">,</span> <span class="s">'call_tracing'</span><span class="p">,</span> <span class="s">'callstats'</span><span class="p">,</span> <span class="s">'copyright'</span><span class="p">,</span> <span class="s">'displayhook'</span><span class="p">,</span> <span class="s">'dont_write_bytecode'</span><span class="p">,</span> <span class="s">'exc_clear'</span><span class="p">,</span> <span class="s">'exc_info'</span><span class="p">,</span> <span class="s">'exc_type'</span><span class="p">,</span> <span class="s">'excepthook'</span><span class="p">,</span> <span class="s">'exec_prefix'</span><span class="p">,</span> <span class="s">'executable'</span><span class="p">,</span> <span class="s">'exit'</span><span class="p">,</span> <span class="s">'flags'</span><span class="p">,</span> <span class="s">'float_info'</span><span class="p">,</span> <span class="s">'getcheckinterval'</span><span class="p">,</span> <span class="s">'getdefaultencoding'</span><span class="p">,</span> <span class="s">'getdlopenflags'</span><span class="p">,</span> <span class="s">'getfilesystemencoding'</span><span class="p">,</span> <span class="s">'getprofile'</span><span class="p">,</span> <span class="s">'getrecursionlimit'</span><span class="p">,</span> <span class="s">'getrefcount'</span><span class="p">,</span> <span class="s">'getsizeof'</span><span class="p">,</span> <span class="s">'gettrace'</span><span class="p">,</span> <span class="s">'hexversion'</span><span class="p">,</span> <span class="s">'last_type'</span><span class="p">,</span> <span class="s">'last_value'</span><span class="p">,</span> <span class="s">'maxint'</span><span class="p">,</span> <span class="s">'maxsize'</span><span class="p">,</span> <span class="s">'maxunicode'</span><span class="p">,</span> <span class="s">'meta_path'</span><span class="p">,</span> <span class="s">'modules'</span><span class="p">,</span> <span class="s">'path'</span><span class="p">,</span> <span class="s">'path_hooks'</span><span class="p">,</span> <span class="s">'path_importer_cache'</span><span class="p">,</span> <span class="s">'platform'</span><span class="p">,</span> <span class="s">'prefix'</span><span class="p">,</span> <span class="s">'ps1'</span><span class="p">,</span> <span class="s">'ps2'</span><span class="p">,</span> <span class="s">'py3kwarning'</span><span class="p">,</span> <span class="s">'setcheckinterval'</span><span class="p">,</span> <span class="s">'setdlopenflags'</span><span class="p">,</span> <span class="s">'setprofile'</span><span class="p">,</span> <span class="s">'setrecursionlimit'</span><span class="p">,</span> <span class="s">'settrace'</span><span class="p">,</span> <span class="s">'stderr'</span><span class="p">,</span> <span class="s">'stdin'</span><span class="p">,</span> <span class="s">'stdout'</span><span class="p">,</span> <span class="s">'subversion'</span><span class="p">,</span> <span class="s">'version'</span><span class="p">,</span> <span class="s">'version_info'</span><span class="p">,</span> <span class="s">'warnoptions'</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">type</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+<span class="o">&lt;</span><span class="nb">type</span> <span class="s">'str'</span><span class="o">&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">type</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="p">)</span>
+<span class="o">&lt;</span><span class="nb">type</span> <span class="s">'str'</span><span class="o">&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="nb">type</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">)</span>
+<span class="o">&lt;</span><span class="nb">type</span> <span class="s">'builtin_function_or_method'</span><span class="o">&gt;</span>
+
+</code></pre></div></div>
+
+<h3 id="模块内置变量-__name__">模块内置变量 <code class="highlighter-rouge">__name__</code></h3>
+
+<ul>
+  <li>模块有一个内置变量 <code class="highlighter-rouge">__name__</code>，Python 内部定义好了，不需要显式定义。</li>
+  <li>一般情况下其值为相对引用路径，如 “lib.parse”</li>
+  <li>在入口模块中值为 <code class="highlighter-rouge">__main__</code></li>
+</ul>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">"__main__"</span><span class="p">:</span>  <span class="c1"># 如果为此形式，说明这个模块是通过 "python *.py" 运行的，而不是通过模块导入的 
+</span>    <span class="c1"># do something
+</span>
+</code></pre></div></div>
+
+:ET

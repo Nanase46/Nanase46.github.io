@@ -1,0 +1,78 @@
+I"1<p>使用 Sonar 进行代码分析</p>
+
+<h1 id="引言">引言</h1>
+
+<p>之前已经安装了 Sonar，现在我们来演示使用 Sonar 进行代码分析。</p>
+
+<h1 id="安装中文语言包插件">安装中文语言包插件</h1>
+
+<p>如果不想使用英文界面，而是使用中文界面，可以安装中文语言包。</p>
+
+<p><code class="highlighter-rouge">首页-&gt;Administration-&gt;System-&gt;Update Center-&gt;Available</code>
+搜索 Chinese 后，选择“Chinese Pack” 后，Install 即可，需要重启生效。</p>
+
+<h1 id="使用-sonar-进行代码分析">使用 Sonar 进行代码分析</h1>
+
+<p>SonarQube 的编程语言插件包含代码扫描分析规则。  <br />
+分析一个编程语言的代码，首先要在 SonarQube 上安装这个编程语言的分析插件。<br />
+然后使用 SonarQube Scanner 进行代码分析。</p>
+
+<h2 id="1-安装编程语言插件">1. 安装编程语言插件</h2>
+
+<p>默认安装中没有 PHP 的语言插件，现在我们来安装一下。<br />
+<code class="highlighter-rouge">首页-&gt;Administration-&gt;System-&gt;Update Center-&gt;Available</code>
+搜索 php 后，选择“PHP” 后，Install 即可，需要重启生效。</p>
+
+<p><code class="highlighter-rouge">
+SonarQube 插件目录：/usr/local/sonarqube/extensions/plugins
+</code></p>
+
+<h2 id="2-安装配置-sonarqube-scanner">2. 安装配置 SonarQube Scanner</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 下载并解压 SonarQube Scanner 软件包</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cd</span> /usr/local/src/
+<span class="o">[</span>root@linux-node1 src]# wget https://sonarsource.bintray.com/Distribution/sonar-scanner-cli/sonar-scanner-2.6.1.zip
+<span class="o">[</span>root@linux-node1 src]# unzip sonar-scanner-2.6.1.zip <span class="nt">-d</span> /usr/local/
+<span class="o">[</span>root@linux-node1 src]# <span class="nb">ln</span> <span class="nt">-s</span> /usr/local/sonar-scanner-2.6.1/ /usr/local/sonar-scanner
+
+<span class="c"># 修改 sonar-scanner.properties 文件，配置如下参数：</span>
+<span class="c">#----- Default SonarQube server</span>
+sonar.host.url<span class="o">=</span>http://localhost:9000
+<span class="c">#----- Default source code encoding</span>
+sonar.sourceEncoding<span class="o">=</span>UTF-8
+<span class="c">#----- Global database settings (not used for SonarQube 5.2+)</span>
+sonar.jdbc.username<span class="o">=</span>sonar
+sonar.jdbc.password<span class="o">=</span>sonar@pw
+<span class="c">#----- MySQL</span>
+sonar.jdbc.url<span class="o">=</span>jdbc:mysql://localhost:3306/sonar?useUnicode<span class="o">=</span><span class="nb">true</span>&amp;amp<span class="p">;</span><span class="nv">characterEncoding</span><span class="o">=</span>utf8
+
+<span class="c"># 检查安装</span>
+<span class="o">[</span>root@linux-node1 src]# /usr/local/sonar-scanner/bin/sonar-scanner <span class="nt">-h</span>
+
+</code></pre></div></div>
+
+<h2 id="3-下载官方提供的样例项目代码进行代码分析测试">3. 下载官方提供的样例项目代码进行代码分析测试</h2>
+
+<p>下载地址：https://github.com/SonarSource/sonar-examples</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+wget https://github.com/SonarSource/sonar-examples/archive/master.zip <span class="nt">-O</span> sonar-examples.zip
+
+<span class="c"># 配置样例项目 sonar-project.properites 配置文件（这里我们使用默认不做修改）</span>
+<span class="o">[</span>root@linux-node1 src]# unzip sonar-examples-master.zip 
+<span class="o">[</span>root@linux-node1 src]# <span class="nb">cd </span>sonar-examples-master/projects/languages/php/php-sonar-runner
+
+<span class="c"># 执行代码分析</span>
+<span class="o">[</span>root@linux-node1 php-sonar-runner]# /usr/local/sonar-scanner/bin/sonar-scanner <span class="nt">-D</span> sonar-project.properties 
+
+</code></pre></div></div>
+<p>代码分析完成后效果如图所示：</p>
+
+<p><img src="http://jaminzhang.github.io/images/CI-CD/SonarQube-Scanner-PHP-Demo.png" alt="SonarQube-Scanner-PHP-Result" /></p>
+
+<p>根据分析结果来改进代码。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://docs.sonarqube.org/display/SCAN/Analyzing+with+SonarQube+Scanner">Analyzing with SonarQube Scanner</a></p>
+:ET

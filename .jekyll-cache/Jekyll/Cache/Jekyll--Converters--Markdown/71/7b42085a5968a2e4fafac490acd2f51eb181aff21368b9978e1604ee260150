@@ -1,0 +1,152 @@
+I"�$<h1 id="dns-的负载均衡">DNS 的负载均衡</h1>
+<p>通过 DNS 实现的负载均衡只是简单的轮询，还有就是不能对后端节点进行健康检测，了解这个特点即可，不建议使用 DNS 来做这种负载均衡。</p>
+
+<h1 id="配置-dns-视图来实现智能-dns">配置 DNS 视图来实现智能 DNS</h1>
+
+<p>原理：根据客户端的 IP 来返回对应的资源记录</p>
+
+<h2 id="1-namedconf-增加-acl-group-配置">1 named.conf 增加 acl group 配置</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@ns-master ~]# <span class="nb">cat</span> /var/named/chroot/etc/named.conf 
+options <span class="o">{</span>
+  version <span class="s2">"1.1.1"</span><span class="p">;</span>
+  listen-on port 53 <span class="o">{</span>any<span class="p">;</span><span class="o">}</span><span class="p">;</span>
+  directory <span class="s2">"/var/named/chroot/etc/"</span><span class="p">;</span>
+  pid-file <span class="s2">"/var/named/chroot/var/run/named/named.pid"</span><span class="p">;</span>
+  allow-query <span class="o">{</span> any<span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+  Dump-file <span class="s2">"/var/named/chroot/var/log/binddump.db"</span><span class="p">;</span>
+  Statistics-file <span class="s2">"/var/named/chroot/var/log/named_stats"</span><span class="p">;</span>
+  zone-statistics <span class="nb">yes</span><span class="p">;</span>
+  memstatistics-file <span class="s2">"log/mem_stats"</span><span class="p">;</span>
+  empty-zones-enable no<span class="p">;</span>
+  forwarders <span class="o">{</span>202.106.196.115<span class="p">;</span>8.8.8.8<span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+key <span class="s2">"rndc-key"</span> <span class="o">{</span>
+        algorithm hmac-md5<span class="p">;</span>
+        secret <span class="s2">"Eqw4hClGExUWeDkKBX/pBg=="</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+controls <span class="o">{</span>
+       inet 127.0.0.1 port 953
+               allow <span class="o">{</span> 127.0.0.1<span class="p">;</span> <span class="o">}</span> keys <span class="o">{</span> <span class="s2">"rndc-key"</span><span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+ <span class="o">}</span><span class="p">;</span>
+
+logging <span class="o">{</span>
+  channel warning <span class="o">{</span>
+    file <span class="s2">"/var/named/chroot/var/log/dns_warning"</span> versions 10 size 10m<span class="p">;</span>
+    severity warning<span class="p">;</span>
+    print-category <span class="nb">yes</span><span class="p">;</span>
+    print-severity <span class="nb">yes</span><span class="p">;</span>
+    print-time <span class="nb">yes</span><span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+  channel general_dns <span class="o">{</span>
+    file <span class="s2">"/var/named/chroot/var/log/dns_log"</span> versions 10 size 100m<span class="p">;</span>
+    severity info<span class="p">;</span>
+    print-category <span class="nb">yes</span><span class="p">;</span>
+    print-severity <span class="nb">yes</span><span class="p">;</span>
+    print-time <span class="nb">yes</span><span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+  category default <span class="o">{</span>
+    warning<span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+  category queries <span class="o">{</span>
+    general_dns<span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+acl group1 <span class="o">{</span>
+  192.168.56.13<span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+acl group2 <span class="o">{</span>
+  192.168.56.14<span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+include <span class="s2">"/var/named/chroot/etc/view.conf"</span><span class="p">;</span>
+
+</code></pre></div></div>
+
+<h2 id="2-配置视图文件-viewconf-中不同的组使用不同的区域文件同一域名下">2 配置视图文件 view.conf 中不同的组使用不同的区域文件（同一域名下）</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@ns-master ~]# <span class="nb">cat</span> /var/named/chroot/etc/view.conf
+view <span class="s2">"GROUP1"</span> <span class="o">{</span>
+  match-clients <span class="o">{</span> group1<span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+  zone <span class="s2">"viewexample.com"</span> <span class="o">{</span>
+    <span class="nb">type </span>master<span class="p">;</span>
+    file <span class="s2">"group1.viewexample.com.zone"</span><span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+
+view <span class="s2">"GROUP2"</span> <span class="o">{</span>
+  match-clients <span class="o">{</span> group2<span class="p">;</span> <span class="o">}</span><span class="p">;</span>
+  zone <span class="s2">"viewexample.com"</span> <span class="o">{</span>
+    <span class="nb">type </span>master<span class="p">;</span>
+    file <span class="s2">"group2.viewexample.com.zone"</span><span class="p">;</span>
+  <span class="o">}</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+</code></pre></div></div>
+<h2 id="3-同一域名下不同的区域文件内容">3 同一域名下不同的区域文件内容</h2>
+
+<p>一个域名对应多个 A 记录，分别在不同的区域文件配置</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vim /var/named/chroot/etc/group1.viewexample.com.zone
+<span class="nv">$ORIGIN</span> <span class="nb">.</span>
+<span class="nv">$TTL</span> 3600       <span class="p">;</span> 1 hour
+viewexample.com                  IN SOA  op.viewexample.com. dns.viewexample.com. <span class="o">(</span>
+                                2005       <span class="p">;</span> serial
+                                900        <span class="p">;</span> refresh <span class="o">(</span>15 minutes<span class="o">)</span>
+                                600        <span class="p">;</span> retry <span class="o">(</span>10 minutes<span class="o">)</span>
+                                86400      <span class="p">;</span> expire <span class="o">(</span>1 day<span class="o">)</span>
+                                3600       <span class="p">;</span> minimum <span class="o">(</span>1 hour<span class="o">)</span>
+                                <span class="o">)</span>
+                        NS      op.viewexample.com.
+<span class="nv">$ORIGIN</span> viewexample.com.
+op                 A       192.168.122.1
+view               A       192.168.122.1
+
+vim /var/named/chroot/etc/group2.viewexample.com.zone 
+<span class="nv">$ORIGIN</span> <span class="nb">.</span>
+<span class="nv">$TTL</span> 3600       <span class="p">;</span> 1 hour
+viewexample.com                  IN SOA  op.viewexample.com. dns.viewexample.com. <span class="o">(</span>
+                                2005       <span class="p">;</span> serial
+                                900        <span class="p">;</span> refresh <span class="o">(</span>15 minutes<span class="o">)</span>
+                                600        <span class="p">;</span> retry <span class="o">(</span>10 minutes<span class="o">)</span>
+                                86400      <span class="p">;</span> expire <span class="o">(</span>1 day<span class="o">)</span>
+                                3600       <span class="p">;</span> minimum <span class="o">(</span>1 hour<span class="o">)</span>
+                                <span class="o">)</span>
+                        NS      op.viewexample.com.
+<span class="nv">$ORIGIN</span> viewexample.com.
+op                 A       192.168.122.2
+view               A       192.168.122.2
+
+<span class="c"># 修改区域文件属主后重新加载</span>
+<span class="nb">chown </span>named.named /var/named/chroot/etc/group<span class="k">*</span>.zone
+rndc reload
+
+</code></pre></div></div>
+
+<h2 id="4-分别在不同-ip-的服务器上测试同一域名返回的-a-记录">4 分别在不同 IP 的服务器上测试同一域名返回的 A 记录</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@ns-master ~]# ip a | <span class="nb">grep </span>eth0
+2: eth0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    inet 192.168.56.13/24 brd 192.168.56.255 scope global eth0
+<span class="o">[</span>root@ns-master ~]# host view.viewexample.com 192.168.56.13
+Using domain server:
+Name: 192.168.56.13
+Address: 192.168.56.13#53
+Aliases: 
+
+view.viewexample.com has address 192.168.122.1
+
+<span class="o">[</span>root@ns-slave ~]# host view.viewexample.com 192.168.56.13
+Using domain server:
+Name: 192.168.56.13
+Address: 192.168.56.13#53
+Aliases: 
+
+view.viewexample.com has address 192.168.122.2
+
+<span class="c"># 可以从上面的结果看到，在不同的服务器上，view.viewexample.com 返回的 IP 地址不同。</span>
+</code></pre></div></div>
+:ET

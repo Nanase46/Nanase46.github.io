@@ -1,0 +1,66 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>说说最近的几次面试遇到的 Shell 脚本相关问题，接上一篇，个人现场思路不太快速，于是回来重新编写下。
+这次一个没写出具体 Shell 代码的题目是：</p>
+
+<blockquote>
+
+  <p>编写 Shell 脚本，如果文件 /root/test.log 在 5 分钟内没有更新，则发送邮件给一个指定邮箱地址。</p>
+</blockquote>
+
+<h1 id="思路">思路</h1>
+
+<p>获取文件修改时间，然后和当前时间比较，如果大于 5 分钟，就发送邮件。</p>
+
+<h1 id="实现">实现</h1>
+
+<h2 id="思路-1">思路 1</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+
+<span class="nv">Current_Timestamp</span><span class="o">=</span><span class="sb">`</span><span class="nb">date</span> +%s<span class="sb">`</span>		<span class="c"># 获取当前时间的 Unix 时间戳</span>
+<span class="nv">File_Modified_Time</span><span class="o">=</span><span class="sb">`</span><span class="nb">stat </span>test.log | <span class="nb">grep</span> <span class="s2">"Modify"</span> | <span class="nb">cut</span> <span class="nt">-d</span><span class="s2">"."</span> <span class="nt">-f1</span> | <span class="nb">cut</span> <span class="nt">-d</span><span class="s2">":"</span> <span class="nt">-f2-</span><span class="sb">`</span>	<span class="c"># 获取文件修改时间</span>
+<span class="nv">File_Modified_Timestamp</span><span class="o">=</span><span class="sb">`</span><span class="nb">date</span> <span class="nt">-d</span> <span class="s2">"</span><span class="k">${</span><span class="nv">File_Modified_Time</span><span class="k">}</span><span class="s2">"</span> +%s<span class="sb">`</span>	<span class="c"># 获取文件修改时间的 Unix 时间戳</span>
+
+
+<span class="nv">Difftime</span><span class="o">=</span><span class="sb">`</span><span class="nb">expr</span> <span class="k">${</span><span class="nv">Current_Timestamp</span><span class="k">}</span> - <span class="k">${</span><span class="nv">File_Modified_Timestamp</span><span class="k">}</span><span class="sb">`</span>	<span class="c"># 获取当前时间和文件修改时间的 Unix 时间戳时间差</span>
+
+<span class="k">if</span> <span class="o">[</span> <span class="nv">$Difftime</span> <span class="nt">-gt</span> 300 <span class="o">]</span>		<span class="c"># 如果时间差大于 300s，说明文件修改时间是在 5 分钟前，也就是最近 5 分钟文件没有更新，如果满足条件就触发以下的邮件发送动作</span>
+<span class="k">then
+    </span><span class="nb">echo</span> <span class="s2">"File not update in past 5 mins."</span> | mail <span class="nt">-s</span> <span class="s2">"File not update!"</span> hdlover09@qq.com
+<span class="k">fi</span>
+</code></pre></div></div>
+
+<blockquote>
+
+  <p>上面的脚本理想情况是实时不停的执行，但在 Linux 下，一般 Shell 脚本定时执行 crontab 最小精确到分钟级别，不过这种级别也应该够了。</p>
+</blockquote>
+
+<h2 id="思路-2">思路 2</h2>
+
+<p>不像思路 1 那么直接，而是巧妙间接使用 find 命令来找出 5 分钟前没更新过的文件。
+具体如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c">#!/bin/bash</span>
+
+<span class="nv">File_Update_Flag</span><span class="o">=</span><span class="sb">`</span><span class="nb">cd</span> /root <span class="o">&amp;&amp;</span> find <span class="nt">-iname</span> <span class="s2">"test.log"</span> <span class="nt">-type</span> f <span class="nt">-mmin</span> +5 | <span class="nb">wc</span> <span class="nt">-l</span><span class="sb">`</span>		<span class="c"># 使用 find 命令查找 5 分钟前文件更新的文件并且文件名是 test.log</span>
+
+<span class="k">if</span> <span class="o">[</span> <span class="k">${</span><span class="nv">File_Update_Flag</span><span class="k">}</span> <span class="nt">-eq</span> 1 <span class="o">]</span>			<span class="c"># 如果找到了这个文件，就就触发以下的邮件发送动作</span>
+<span class="k">then
+    </span><span class="nb">echo</span> <span class="s2">"File not update in past 5 mins."</span> | mail <span class="nt">-s</span> <span class="s2">"File not update!"</span> hdlover09@qq.com
+<span class="k">fi</span>
+
+</code></pre></div></div>
+
+<blockquote>
+
+  <p>上面的脚本理想情况是实时不停的执行，但在 Linux 下，一般 Shell 脚本定时执行 crontab 最小精确到分钟级别，不过这种级别也应该够了。</p>
+</blockquote>
+
+<h1 id="ref">Ref</h1>
+
+<p><a href="http://www.opstool.com/article/224">Linux命令date日期时间和Unix时间戳互转</a><br />
+<a href="http://beckup.blog.51cto.com/6135002/1152114">linux中的文件查找方法</a><br />
+<a href="http://www.ttlsa.com/linux/fix-send-mail-warning-inet/">Fix: Send-Mail: Warning: Inet_protocols: IPv6 Support Is Disabled</a></p>
+:ET

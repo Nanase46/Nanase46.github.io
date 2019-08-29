@@ -1,0 +1,57 @@
+I"�	<h1 id="jekins-web-界面">Jekins Web 界面</h1>
+
+<p><code class="highlighter-rouge">Manage Jenkins</code>下是 Jekins 的相关配置，下面列出几个要重点熟悉的配置项目</p>
+
+<h2 id="configure-system">Configure System</h2>
+
+<h2 id="configure-credentials">Configure Credentials</h2>
+
+<p>本文要进行拉取 GitLab 仓库的项目演示，需要先添加 SSH 私钥方式的认证。</p>
+
+<p><code class="highlighter-rouge">首页左侧"Credentials"-&gt;中间"(global)"-&gt;左侧“Add Credentials”</code>，然后配置如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+Kind: SSH Username with private key
+Username: root <span class="o">(</span>本文使用 root 用户<span class="o">)</span>
+Private Key: Enter directly<span class="o">(</span>私钥为 Jekins 服务器上 root 用户私钥<span class="o">)</span>
+Description: GitLab Demo
+
+</code></pre></div></div>
+
+<p>此处 root 用户对应的公钥需要配置到 GitLab 上的 Deploy Keys</p>
+
+<h2 id="manage-plugins">Manage Plugins</h2>
+
+<p>本文要进行拉取 GitLab 仓库的项目演示，需要先安装好 Git 和 GitLab 相关插件。
+GitLab 相关可用插件全部安装下：</p>
+
+<ul>
+  <li>Gitlab Authentication plugin</li>
+  <li>GitLab Plugin</li>
+  <li>GitLab Logo Plugin</li>
+  <li>Gitlab Merge Request Builder</li>
+  <li>Gitlab Hook Plugin</li>
+</ul>
+
+<p>Git 相关插件之前已经安装好了。</p>
+
+<h1 id="创建新任务演示">创建新任务演示</h1>
+
+<ol>
+  <li>首页中间“create new jobs”-&gt;</li>
+  <li>“Enter an item name 填写 auto-deploy、然后选择 Freestyle project”-&gt;</li>
+  <li>“General 下面 Description: CI测试，其他默认”-&gt;</li>
+  <li>“Source Code Management 下面：选择 Git, 
+Repository URL 填写 GitLab 仓库的 git 方式 URL：git@192.168.56.12:web/web-demo.git, 
+Credentials 填写对应的认证方式，
+Repository browser 选择 gitlab，填写 GitLab 仓库的 http 方式的 URL: http://192.168.56.12/web/web-demo.git ，
+Version 填写 GitLab 的版本：8.10”</li>
+</ol>
+
+<p>完成以上配置，点击 Save，保存项目配置。</p>
+
+<h1 id="项目构建演示">项目构建演示</h1>
+
+<p>定位到刚才创建的项目“auto-deploy” -&gt; 点击网页左侧“Build Now” 开始构建。<br />
+构建完成后（蓝色圆球表示构建成功），可以在 “Build History” 中点击刚才的构建记录，进行去后查看具体的“Console Output”。</p>
+:ET

@@ -1,0 +1,42 @@
+I"t<h1 id="引言">引言</h1>
+
+<p>这个我想很多人都配置过，根据前面的一些 CGI/FastCGI/SAPI 等概念的理解，这里我重新根据 PHP 官网重新记录说明下要点配置。</p>
+
+<h1 id="apache-2x-配置-php">Apache 2.x 配置 PHP</h1>
+
+<p>要点配置：<br />
+httpd.conf 文件以调用 PHP 模块<br />
+<code class="highlighter-rouge">LoadModule php5_module modules/libphp5.so</code></p>
+
+<h1 id="nginx-配置-php">Nginx 配置 PHP</h1>
+
+<p>要点配置：</p>
+
+<p>PHP 安装时要启用 PHP-FPM 模块，编译安装时的参数：<code class="highlighter-rouge">--enable-fpm</code></p>
+
+<p>配置 Nginx 使其支持 PHP 应用：</p>
+
+<p><code class="highlighter-rouge">vim /usr/local/nginx/conf/nginx.conf</code><br />
+修改默认的 location 块，使其支持 .php 文件：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>location / <span class="o">{</span>
+    root   html<span class="p">;</span>
+    index  index.php index.html index.htm<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>下一步配置来保证对于 .php 文件的请求将被传送到后端的 PHP-FPM 模块， 取消默认的 PHP 配置块的注释，并修改为下面的内容：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>location ~<span class="k">*</span> <span class="se">\.</span>php<span class="nv">$ </span><span class="o">{</span>
+    fastcgi_index   index.php<span class="p">;</span>
+    fastcgi_pass    127.0.0.1:9000<span class="p">;</span>
+    include         fastcgi_params<span class="p">;</span>
+    fastcgi_param   SCRIPT_FILENAME    <span class="nv">$document_root$fastcgi_script_name</span><span class="p">;</span>
+    fastcgi_param   SCRIPT_NAME        <span class="nv">$fastcgi_script_name</span><span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://php.net/manual/zh/install.unix.apache2.php">Unix 系统下的 Apache 2.x </a><br />
+<a href="http://php.net/manual/zh/install.unix.nginx.php">Unix 系统下的 Nginx 1.4.x</a></p>
+:ET

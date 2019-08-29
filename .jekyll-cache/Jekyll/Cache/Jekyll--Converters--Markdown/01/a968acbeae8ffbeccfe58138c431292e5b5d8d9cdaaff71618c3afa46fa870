@@ -1,0 +1,57 @@
+I"`
+<h2 id="安装-jdk">安装 JDK</h2>
+
+<p>Jenkins 是 Java 编写的，所以需要先安装 JDK，这里采用 yum 安装，如果对版本有需求，可以直接在 Oracle 官网下载 JDK。</p>
+
+<p>本文在 CentOS 7 下安装。</p>
+
+<p><code class="highlighter-rouge">
+yum install java-1.8.0 -y
+</code></p>
+
+<h2 id="安装-jenkins">安装 Jenkins</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+wget <span class="nt">-O</span> /etc/yum.repos.d/jenkins.repo http://pkg.jenkins.io/redhat/jenkins.repo
+rpm <span class="nt">--import</span> http://pkg.jenkins.io/redhat/jenkins.io.key
+yum <span class="nb">install </span>jenkins <span class="nt">-y</span>
+systemctl start jenkins
+
+</code></pre></div></div>
+
+<h2 id="访问-jenkins">访问 Jenkins</h2>
+
+<p>使用浏览器访问 http://192.168.56.11:8080/ （主机名修改成你自己的）
+等待自动刷新一会儿，提示解锁 Jenkins，查看 <code class="highlighter-rouge">/var/lib/jenkins/secrets/initialAdminPassword</code> 中的初始密码</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cat</span> /var/lib/jenkins/secrets/initialAdminPassword  
+8d80e09b60984fefa68c5d4551a0719f
+
+</code></pre></div></div>
+
+<h2 id="安装-jenkins-插件">安装 Jenkins 插件</h2>
+
+<p>选择默认即可，会安装通用的社区插件，剩下的可以在使用的时候再进行安装</p>
+
+<p><code class="highlighter-rouge">
+由于网络原因，有一些插件会安装失败。需要重试多次安装。
+</code></p>
+
+<h2 id="设置-admin-用户和密码">设置 admin 用户和密码</h2>
+
+<h2 id="登录-jenkins">登录 Jenkins</h2>
+
+<h2 id="遇到的问题">遇到的问题</h2>
+
+<p>解锁 Jenkins 后，一直在加载，非常久后还是在加载。<br />
+在浏览器中查看加载状态，并没有看到报错。
+查看 Jenkins 服务状态，查看日志文件<code class="highlighter-rouge">/var/log/jenkins/jenkins.log</code>，也没有看到什么报错。
+更换浏览器后，上述一直加载现象依旧。<br />
+尝试重启 Jenkins 服务后看下，然后就没有一直加载了，可以到插件选择页面。真是奇怪，原因不明。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://wiki.jenkins-ci.org/display/JENKINS/Installing+Jenkins+on+Red+Hat+distributions">Installing Jenkins on Red Hat distributions</a><br />
+<a href="http://pkg.jenkins.io/redhat/">RedHat Linux RPM packages for Jenkins</a><br />
+<a href="https://www.unixhot.com/article/55">持续集成之 Jenkins 安装部署</a></p>
+:ET

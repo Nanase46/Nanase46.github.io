@@ -1,0 +1,95 @@
+I"�<h1 id="1-jenkins-上安装配置-sonarqube-plugin-插件">1. Jenkins 上安装配置 SonarQube Plugin 插件</h1>
+
+<p>首先安装 SonarQube Plugin 插件(会有几个依赖插件)。然后做如下配置：</p>
+
+<h2 id="11-将-jenkins-关联-sonar">1.1 将 Jenkins 关联 Sonar</h2>
+
+<p>定位到 ` “Manage Jenkins”-&gt;”Configure System”-&gt;”SonarQube servers”-&gt;<br />
+“SonarQube installations”-&gt;”Add SonarQube” ` 配置如下然后保存：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+Name: Sonar
+Server URL: http://192.168.56.11:9000/
+Server version: 5.3 or higher
+
+</code></pre></div></div>
+
+<h2 id="12-配置-sonarqube-scanner">1.2 配置 SonarQube Scanner</h2>
+
+<p>定位到 ` “Manage Jenkins”-&gt;”Global Tool Configuration”-&gt;”SonarQube Scanner”-&gt;<br />
+“SonarQube Scanner installations”-&gt;”Add SonarQube Scanner” `配置如下然后保存：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+Name: Sonar Scanner
+不选择 Install automatically
+SONAR_RUNNER_HOME: /usr/local/sonar-scanner 
+<span class="c"># SonarQuber Scanner 和 Jekins 是在同一台服务器上 ，SonarQube Server 不需要</span>
+
+</code></pre></div></div>
+
+<h1 id="2-配置-jekins-项目的构建">2. 配置 Jekins 项目的构建</h1>
+
+<p>选择之前配置的 auto-deploy 项目，在 Build 下配置如下后保存：</p>
+
+<p>选择 <code class="highlighter-rouge">Execute SonarQube Scanner</code></p>
+
+<p>Analysis properties 配置如下:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+sonar.projectKey<span class="o">=</span>demo
+sonar.projectName<span class="o">=</span>demo
+sonar.projectVersion<span class="o">=</span>1.0
+sonar.sources<span class="o">=</span>./
+sonar.language<span class="o">=</span>php
+sonar.sourceEncoding<span class="o">=</span>UTF-8
+
+</code></pre></div></div>
+
+<p>这里的 Analysis properties 有 2 种方法：</p>
+
+<ol>
+  <li>让研发在项目根目录放置包含以上内容的 SonarQube Scanner 配置文件</li>
+  <li>如上，在项目构建上手动配置</li>
+</ol>
+
+<h1 id="3-测试-jenkins-项目构建">3. 测试 Jenkins 项目构建</h1>
+
+<p>选择 “auto-deploy” 项目，点击 “Build Now” 立即构建。</p>
+
+<p>查看 Output 是否构建成功。（Output 是实时显示的。）</p>
+
+<p>Jekins 项目主页上有 Sonar 快捷方式，可以点击查看代码扫描的具体结果。</p>
+
+<p>可以在 SonarQuber 首页添加配置一些 widgets：</p>
+
+<ul>
+  <li>Integration Tests Coverage 集成测试覆盖率</li>
+  <li>Documentation &amp; Comments 文档和注释</li>
+</ul>
+
+<h1 id="4-配置-jekins-项目构建后操作">4. 配置 Jekins 项目构建后操作</h1>
+
+<p>可配置邮件通知，当构建失败时发送邮件通知。</p>
+
+<p>邮件通知需要先配置好，如下：</p>
+
+<h2 id="配置系统管理员邮箱地址">配置系统管理员邮箱地址</h2>
+
+<p>定位到 <code class="highlighter-rouge">"Manage Jenkins"-&gt;"Configure System"-&gt;"Jenkins Location"  
+System Admin e-mail address: 779432xxx@qq.com </code>(以 QQ 邮箱演示)</p>
+
+<h2 id="配置-e-mail-notification">配置 E-mail Notification</h2>
+
+<p>然后再定位到<code class="highlighter-rouge">"Manage Jenkins"-&gt;"Configure System"-&gt;"E-mail Notification"</code>，配置如下图示：</p>
+
+<p><img src="http://jaminzhang.github.io/images/CI-CD/Jenkins-Email-Notification.png" alt="Jenkins-Email-Notification" /></p>
+
+<p>将 SonarQube 服务关闭，然后构建项目，由于 SonarQube 服务无法访问所以肯定会导致项目构建失败从而触发邮件通知。</p>
+
+<p>最后，我们把 auto-deploy 项目改名成 demo-sonar。</p>
+
+<h1 id="遇到的问题">遇到的问题</h1>
+
+<p>4 次构建失败，而且 Jekins 进程也自动关掉了，初步判断是测试的虚拟机内存不足原因。</p>
+
+:ET

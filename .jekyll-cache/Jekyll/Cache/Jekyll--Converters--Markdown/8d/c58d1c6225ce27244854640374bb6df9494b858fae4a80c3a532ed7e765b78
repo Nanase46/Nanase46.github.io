@@ -1,0 +1,39 @@
+I"B<h1 id="zabbix-agent-主动方式自动注册的配置">Zabbix Agent 主动方式自动注册的配置</h1>
+
+<h2 id="1-配置-zabbix-agent">1. 配置 Zabbix Agent</h2>
+
+<p>配置 ServerActive、Hostname 参数</p>
+
+<h2 id="2-web-前端配置自动注册功能">2. Web 前端配置自动注册功能</h2>
+
+<p>在代理方式下实现自动注册功能</p>
+
+<h3 id="1-web-前端创建-action">1. Web 前端创建 Action</h3>
+
+<p><code class="highlighter-rouge">Configuration -&gt; Actions -&gt; Event source -&gt; Auto registration -&gt; Create action</code></p>
+
+<h3 id="2-在-action-选项中配置名称等信息">2. 在 Action 选项中配置名称等信息</h3>
+
+<h3 id="3-在-conditions-选项选择-new-condition---proxy选择一个代理然后-add">3. 在 Conditions 选项，选择 <code class="highlighter-rouge">New condition -&gt; Proxy</code>，选择一个代理，然后 Add</h3>
+
+<h3 id="4-配置-operations-选项">4. 配置 Operations 选项</h3>
+
+<p>在 Operation details 中 选择 Add host, Add to host group, Link to template 等</p>
+
+<h1 id="zabbix-agent-host-metadata-方式自动注册的配置">Zabbix Agent Host metadata 方式自动注册的配置</h1>
+
+<p>在之前 Host name 和 Proxy 的基础上增加了 Host metadata，为了应对生产环境更复杂的情况。<br />
+（比如，云环境下主机名的无规律）</p>
+
+<h2 id="1-使用-hostmetadataitem-配置参数">1. 使用 HostMetadataItem 配置参数</h2>
+
+<p>HostMetadataItem 参数用于指定 Item</p>
+
+<p>比如，对 Linux 系统的自动注册，配置方法如下：<br />
+在 Conditions 选项，选择 <code class="highlighter-rouge">New condition -&gt; Host metadata like Linux</code></p>
+
+<h2 id="2-使用-hostmetadata-配置参数">2. 使用 HostMetadata 配置参数</h2>
+
+<p>HostMetadata 参数值自己定义
+配置方法同上 HostMetadataItem</p>
+:ET

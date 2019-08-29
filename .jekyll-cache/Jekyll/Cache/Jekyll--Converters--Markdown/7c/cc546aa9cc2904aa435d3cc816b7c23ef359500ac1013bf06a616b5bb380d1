@@ -1,0 +1,110 @@
+I"+<h1 id="1-piwik-简介">1 Piwik 简介</h1>
+
+<p>Piwik 是开源网站分析软件，功能媲美GA。<br />
+更多介绍见官网<a href="https://piwik.org/what-is-piwik/">what-is-piwik</a></p>
+
+<p>相对于GA，Piwik 具有以下独特优势：</p>
+
+<ol>
+  <li>无抽样和延迟问题，无流量限制，因为它是本地托管服务，只受限于你的服务器性能。</li>
+  <li>支持基于用户查看访问日志，在某些特定场景会非常有用，比如排查购物车流程或者监控恶意点击。</li>
+  <li>可以对历史数据进行重新处理计算，因为它是基于用户的原始访问日志进行数据存储。</li>
+  <li>GA 的大多数实用功能基本都已经有了，比如电子商务跟踪、自定义变量跟踪、事件跟踪、目标跟踪、广告系列跟踪、高级细分等。</li>
+  <li>不单单是分析网站浏览，服务器日志也可以跟踪，分析服务器日志是 SEO 大牛们经常使用的一个方法。</li>
+  <li>可以通过插件和自定义主题来满足自己的个性化需求，对于有技术基础的公司是一个不错的入门选择。</li>
+  <li>它是免费的！</li>
+</ol>
+
+<h1 id="2-piwik-安装部署">2 Piwik 安装部署</h1>
+
+<h2 id="21-yum-安装-lamp-环境">2.1 yum 安装 LAMP 环境</h2>
+
+<blockquote>
+
+  <p>yum install httpd httpd-manual php php-pdo php-mysql php-gd php-curl php-cli php-xml php-mbstring php-ldap php-xmlrpc php-pear mod_ssl mod_perl mysql-connector-odbc mariadb-server mariadb-devel</p>
+</blockquote>
+
+<h2 id="22-部署配置-apache-piwik-站点目录">2.2 部署配置 Apache Piwik 站点目录</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> /var/www/html/
+wget http://builds.piwik.org/piwik.zip
+unzip piwik.zip
+<span class="nb">chown</span> <span class="nt">-R</span> apache.apache /var/www/html/piwik
+<span class="nb">chmod </span>0755 /var/www/html/piwik/tmp/
+<span class="nb">mv </span>piwik/<span class="k">*</span> <span class="nb">.</span>
+
+systemctl start httpd
+</code></pre></div></div>
+
+<h2 id="23-创建-piwik-数据库及用户">2.3 创建 Piwik 数据库及用户</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl start mariadb
+
+MariaDB <span class="o">[(</span>none<span class="o">)]&gt;</span> create database piwik<span class="p">;</span>
+Query OK, 1 row affected <span class="o">(</span>0.00 sec<span class="o">)</span>
+
+MariaDB <span class="o">[(</span>none<span class="o">)]&gt;</span> grant all on piwik.<span class="k">*</span> to piwik@localhost identified by <span class="s1">'piwik'</span><span class="p">;</span>
+Query OK, 0 rows affected <span class="o">(</span>0.00 sec<span class="o">)</span>
+
+MariaDB <span class="o">[(</span>none<span class="o">)]&gt;</span> flush privileges<span class="p">;</span>
+Query OK, 0 rows affected <span class="o">(</span>0.00 sec<span class="o">)</span>
+</code></pre></div></div>
+
+<h2 id="24-通过-web-界面安装-piwik">2.4 通过 Web 界面安装 Piwik</h2>
+
+<p>访问 Piwik 的 URL(我的如下)<br />
+http://192.168.56.11/</p>
+
+<p>具体图文步骤官网上有<a href="https://piwik.org/docs/installation/">Installing Piwik</a></p>
+
+<h2 id="25-配置网站和添加-javascript-跟踪代码">2.5 配置网站和添加 JavaScript 跟踪代码</h2>
+
+<p>这里我添加自己的博客 http://jaminzhang.github.io/</p>
+
+<p>将 Piwik 生成的 JavaScript 跟踪代码添加到博客的模板页（不同网站系统根据实际情况配置）</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">&lt;!--</span> <span class="nx">Piwik</span> <span class="o">--&gt;</span>
+<span class="o">&lt;</span><span class="nx">script</span> <span class="nx">type</span><span class="o">=</span><span class="dl">"</span><span class="s2">text/javascript</span><span class="dl">"</span><span class="o">&gt;</span>
+  <span class="kd">var</span> <span class="nx">_paq</span> <span class="o">=</span> <span class="nx">_paq</span> <span class="o">||</span> <span class="p">[];</span>
+  <span class="nx">_paq</span><span class="p">.</span><span class="nx">push</span><span class="p">([</span><span class="dl">"</span><span class="s2">setDomains</span><span class="dl">"</span><span class="p">,</span> <span class="p">[</span><span class="dl">"</span><span class="s2">*.jaminzhang.github.io</span><span class="dl">"</span><span class="p">]]);</span>
+  <span class="nx">_paq</span><span class="p">.</span><span class="nx">push</span><span class="p">([</span><span class="dl">'</span><span class="s1">trackPageView</span><span class="dl">'</span><span class="p">]);</span>
+  <span class="nx">_paq</span><span class="p">.</span><span class="nx">push</span><span class="p">([</span><span class="dl">'</span><span class="s1">enableLinkTracking</span><span class="dl">'</span><span class="p">]);</span>
+  <span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">u</span><span class="o">=</span><span class="dl">"</span><span class="s2">//192.168.56.11/</span><span class="dl">"</span><span class="p">;</span>
+    <span class="nx">_paq</span><span class="p">.</span><span class="nx">push</span><span class="p">([</span><span class="dl">'</span><span class="s1">setTrackerUrl</span><span class="dl">'</span><span class="p">,</span> <span class="nx">u</span><span class="o">+</span><span class="dl">'</span><span class="s1">piwik.php</span><span class="dl">'</span><span class="p">]);</span>
+    <span class="nx">_paq</span><span class="p">.</span><span class="nx">push</span><span class="p">([</span><span class="dl">'</span><span class="s1">setSiteId</span><span class="dl">'</span><span class="p">,</span> <span class="mi">1</span><span class="p">]);</span>
+    <span class="kd">var</span> <span class="nx">d</span><span class="o">=</span><span class="nb">document</span><span class="p">,</span> <span class="nx">g</span><span class="o">=</span><span class="nx">d</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="dl">'</span><span class="s1">script</span><span class="dl">'</span><span class="p">),</span> <span class="nx">s</span><span class="o">=</span><span class="nx">d</span><span class="p">.</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="dl">'</span><span class="s1">script</span><span class="dl">'</span><span class="p">)[</span><span class="mi">0</span><span class="p">];</span>
+    <span class="nx">g</span><span class="p">.</span><span class="nx">type</span><span class="o">=</span><span class="dl">'</span><span class="s1">text/javascript</span><span class="dl">'</span><span class="p">;</span> <span class="nx">g</span><span class="p">.</span><span class="k">async</span><span class="o">=</span><span class="kc">true</span><span class="p">;</span> <span class="nx">g</span><span class="p">.</span><span class="nx">defer</span><span class="o">=</span><span class="kc">true</span><span class="p">;</span> <span class="nx">g</span><span class="p">.</span><span class="nx">src</span><span class="o">=</span><span class="nx">u</span><span class="o">+</span><span class="dl">'</span><span class="s1">piwik.js</span><span class="dl">'</span><span class="p">;</span> <span class="nx">s</span><span class="p">.</span><span class="nx">parentNode</span><span class="p">.</span><span class="nx">insertBefore</span><span class="p">(</span><span class="nx">g</span><span class="p">,</span><span class="nx">s</span><span class="p">);</span>
+  <span class="p">})();</span>
+<span class="o">&lt;</span><span class="sr">/script</span><span class="err">&gt;
+</span><span class="o">&lt;</span><span class="nx">noscript</span><span class="o">&gt;&lt;</span><span class="nx">p</span><span class="o">&gt;&lt;</span><span class="nx">img</span> <span class="nx">src</span><span class="o">=</span><span class="dl">"</span><span class="s2">//192.168.56.11/piwik.php?idsite=1</span><span class="dl">"</span> <span class="nx">style</span><span class="o">=</span><span class="dl">"</span><span class="s2">border:0;</span><span class="dl">"</span> <span class="nx">alt</span><span class="o">=</span><span class="dl">""</span> <span class="o">/&gt;&lt;</span><span class="sr">/p&gt;&lt;/</span><span class="nx">noscript</span><span class="o">&gt;</span>
+<span class="c">&lt;!--</span> <span class="nx">End</span> <span class="nx">Piwik</span> <span class="nx">Code</span> <span class="o">--&gt;</span>
+</code></pre></div></div>
+
+<h2 id="26-piwik-web-界面">2.6 Piwik Web 界面</h2>
+
+<p>截图如下：
+<img src="https://raw.githubusercontent.com/JaminZhang/jaminzhang.github.io/master/images/Piwik-01.png" alt="Piwik Dashboard" /></p>
+
+<h2 id="27-piwik-深入配置使用">2.7 Piwik 深入配置使用</h2>
+
+<p>由专业的数据分析人员进行配置使用</p>
+
+<h1 id="报错">报错</h1>
+
+<p>安装过程中提示 tracker status 500</p>
+
+<p>查看 httpd err_log，如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>Tue Jun 14 17:10:03.859201 2016] <span class="o">[</span>:error] <span class="o">[</span>pid 15967] <span class="o">[</span>client 192.168.56.1:49170] PHP Fatal error:  Uncaught exception <span class="s1">'Exception'</span> with message <span class="s1">'The configuration file {/var/www/html/config/config.ini.php} has not been found or could not be read.'</span> <span class="k">in</span> /var/www/html/core/Application/Kernel/EnvironmentValidator.php:63<span class="se">\n</span>Stack trace:<span class="se">\n</span><span class="c">#0 /var/www/html/core/Application/Kernel/EnvironmentValidator.php(44): Piwik\\Application\\Kernel\\EnvironmentValidator-&gt;checkConfigFileExists('/var/www/html/c...', false)\n#1 /var/www/html/core/Application/Environment.php(185): Piwik\\Application\\Kernel\\EnvironmentValidator-&gt;validate()\n#2 /var/www/html/core/Application/Environment.php(94): Piwik\\Application\\Environment-&gt;validateEnvironment()\n#3 /var/www/html/piwik.php(56): Piwik\\Application\\Environment-&gt;init()\n#4 {main}\n  thrown in /var/www/html/core/Application/Kernel/EnvironmentValidator.php on line 63</span>
+</code></pre></div></div>
+
+<p>从上面的日志看到：/var/www/html/config/config.ini.php 不存在<br />
+这时我们可以忽略这个错误，当我们完成安装过程后，这个配置文件会自动生成的。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://www.xuliangwei.com/xubusi/522.html">piwik安装部署最佳实践</a><br />
+<a href="https://piwik.org/what-is-piwik/">what-is-piwik</a> <br />
+<a href="https://piwik.org/docs/installation/">Installing Piwik</a><br />
+<a href="http://stackoverflow.com/questions/33870884/piwik-tracker-status-500-installation-error">piwik tracker status 500 installation error</a></p>
+:ET

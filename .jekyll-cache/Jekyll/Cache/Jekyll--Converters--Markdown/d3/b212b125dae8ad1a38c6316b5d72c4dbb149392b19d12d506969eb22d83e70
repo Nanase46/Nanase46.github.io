@@ -1,0 +1,86 @@
+I"F<h1 id="实例-1">实例 1</h1>
+
+<p>删除某目录下所有文件含有 test 字符串的行</p>
+
+<blockquote>
+
+  <table>
+    <tbody>
+      <tr>
+        <td>grep -r -l “test”  *</td>
+        <td>xargs sed -i “/test/d”</td>
+      </tr>
+    </tbody>
+  </table>
+</blockquote>
+
+<p>上面使用 grep 递归搜索包含 test 字符串的文件名，然后传递给 sed 做删除操作</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nt">-r</span>, <span class="nt">--recursive</span> <span class="c"># 递归读取目录下的所有文件</span>
+Read all files under each directory, recursively, 
+following symbolic links only <span class="k">if </span>they are on the <span class="nb">command </span>line.
+This is equivalent to the <span class="nt">-d</span> recurse option.
+
+<span class="nt">-l</span>, <span class="nt">--files-with-matches</span>  # 打印匹配的文件名
+Suppress normal output<span class="p">;</span> instead print the name of each input file from which 
+output would normally have been printed.
+The scanning will stop on the first match.  <span class="o">(</span><span class="nt">-l</span> is specified by POSIX.<span class="o">)</span>
+
+</code></pre></div></div>
+
+<h1 id="实例-2">实例 2</h1>
+
+<p>在某目录下（包含子目录，但排除 test 目录）的所有脚本中 “/etc/init.d/zabbix-agent restart” 这行的后面添加上如下几行：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nb">sleep </span>5
+<span class="nv">IP_ADDR</span><span class="o">=</span><span class="sb">`</span>curl <span class="nt">-s</span> http://xxx.xx/getip.php<span class="sb">`</span>
+curl <span class="nt">-H</span> <span class="s2">"X-Auth-Token:</span><span class="k">${</span><span class="nv">token</span><span class="k">}</span><span class="s2">"</span> http://xxx.xx:8332/api/monitor <span class="nt">-d</span> <span class="nv">ip</span><span class="o">=</span><span class="k">${</span><span class="nv">IP_ADDR</span><span class="k">}</span>
+
+</code></pre></div></div>
+
+<blockquote>
+
+  <p>以上需求来自实际生产，实际目的是将一个目录下（排除部分目录）所有的系统初始化脚本添加上安装 Zabbix Agent 后，通知自动添加 Zabbix 监控的 API。</p>
+</blockquote>
+
+<p>实现方法：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@xxx xx]# <span class="nb">cat</span> /tmp/zabbix-api.txt  <span class="c"># 将要添加的多行内容写在一个文件中</span>
+<span class="nb">sleep </span>5
+<span class="nv">IP_ADDR</span><span class="o">=</span><span class="sb">`</span>curl <span class="nt">-s</span> http://xxx.xx/getip.php<span class="sb">`</span>
+curl <span class="nt">-H</span> <span class="s2">"X-Auth-Token:</span><span class="k">${</span><span class="nv">token</span><span class="k">}</span><span class="s2">"</span> http://xxx.xx:8332/api/monitor <span class="nt">-d</span> <span class="nv">ip</span><span class="o">=</span><span class="k">${</span><span class="nv">IP_ADDR</span><span class="k">}</span>
+
+<span class="c"># grep 结合 sed </span>
+<span class="o">[</span>root@xxx xxx]# <span class="nb">grep</span> <span class="nt">-r</span> <span class="nt">-l</span> <span class="nt">--exclude-dir</span><span class="o">=</span><span class="s2">"test"</span> <span class="s2">"</span><span class="se">\/</span><span class="s2">etc</span><span class="se">\/</span><span class="s2">init.d</span><span class="se">\/</span><span class="s2">zabbix-agent restart"</span>  <span class="k">*</span> | <span class="se">\</span>
+xargs <span class="nb">sed</span> <span class="nt">-i</span> <span class="s2">"/</span><span class="se">\/</span><span class="s2">etc</span><span class="se">\/</span><span class="s2">init.d</span><span class="se">\/</span><span class="s2">zabbix-agent restart/r /tmp/zabbix-api.txt"</span>
+</code></pre></div></div>
+
+<h1 id="实例-3">实例 3</h1>
+
+<p>统计一个文件中包含特定字符串的个数。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 统计 test.txt 文件中 jamin 字符串的个数</span>
+<span class="o">[</span>root@VM_15_187_centos ~]# <span class="nb">grep</span> <span class="nt">--color</span><span class="o">=</span>auto jamin test.txt
+jamin jamin
+txt jamin
+abcd jamin
+<span class="o">[</span>root@VM_15_187_centos ~]# <span class="nb">grep</span>  <span class="nt">-o</span> jamin test.txt 
+jamin
+jamin
+jamin
+jamin
+<span class="o">[</span>root@VM_15_187_centos ~]# <span class="nb">grep</span> <span class="nt">-o</span> jamin test.txt  | <span class="nb">wc</span> <span class="nt">-l</span>
+4
+
+<span class="nt">-o</span>, <span class="nt">--only-matching</span> <span class="c"># 只打印一个匹配行的匹配部分</span>
+Print only the matched <span class="o">(</span>non-empty<span class="o">)</span> parts of a matching line, with each such part on a separate output line.
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p>man grep</p>
+:ET

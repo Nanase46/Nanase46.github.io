@@ -1,0 +1,128 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>同事问我怎样看一个进程的启动时间和运行时间，我第一反应当然是说用 ps 命令啦。<br />
+<code class="highlighter-rouge">ps aux</code>或<code class="highlighter-rouge">ps -ef</code>不就可以看时间吗？</p>
+
+<h1 id="ps-aux选项及输出说明"><code class="highlighter-rouge">ps aux</code>选项及输出说明</h1>
+
+<p>我们来重新复习下<code class="highlighter-rouge">ps aux</code>的选项，这是类 BSD 风格的命令选项，因为不带“-”。</p>
+
+<p>通过 man 可以看到 aux 选项解释如下：</p>
+
+<pre>
+
+a      Lift the BSD-style "only yourself" restriction, which is imposed upon the set of all processes 
+when some BSD-style (without "-") options are used or when the ps personality setting is BSD-like.  
+The set of processes selected in this manner is in addition to the set of processes selected by other means.
+An alternate description is that this option causes ps to list all processes with a terminal (tty), 
+or to list all processes when used together with the x option.
+
+x      Lift the BSD-style "must have a tty" restriction, which is imposed upon the set of all processes 
+when some BSD-style (without "-") options are used or when the ps personality setting is BSD-like.  
+The set of processes selected in this manner is in addition to the set of processes selected by other means.  
+An alternate description is that this option causes ps to list all processes owned by you (same EUID as ps), 
+or to list all processes when used together with the a option.
+
+u      Display user-oriented format.
+              
+
+</pre>
+
+<p>然后再来看下<code class="highlighter-rouge">ps aux</code>的输出结果，其首行如下，说明了输出的各列：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+</code></pre></div></div>
+
+<p>我们可以看到START和TIME列，通过 man 其说明如下：</p>
+
+<pre>
+
+bsdstart    START     time the command started.  
+If the process was started less than 24 hours ago, the output format is " HH:MM", 
+else it is " Mmm:SS" (where Mmm is the three letters of the month). 
+See also lstart, start, start_time, and stime.
+
+bsdtime     TIME      accumulated cpu time, user + system.  
+The display format is usually "MMM:SS", 
+but can be shifted to the right if the process used more than 999 minutes of cpu time.
+
+</pre>
+
+<p>START 是命令启动的时间，如果在 24 小时之内启动的，则输出格式为”HH:MM”（小时：分钟），<br />
+否则就是”Mmm:SS”（月份英语单词前 3 个字母：一月的第几号？[SS 这里面怎么理解？为什么有冒号呢？输出并没冒号]）
+可以知道，这里并不能直接看出 24 小时之前启动的命令的精确启动时间。</p>
+
+<p>TIME 是累积的 CPU 时间（user+system），显示格式通常是”MMM:SS”。（分钟：秒）
+可以看出，这里并不是指从命令启动开始到现在所花的时间。</p>
+
+<h1 id="ps--ef选项及输出说明"><code class="highlighter-rouge">ps -ef</code>选项及输出说明</h1>
+
+<p>带一个“-”为 UNIX 风格的命令选项。</p>
+
+<pre>
+
+-e     Select all processes.  Identical to -A.
+
+-f     Do full-format listing. 
+This option can be combined with many other UNIX-style options to add additional columns.  
+It also causes the command arguments to be printed.  
+When used with -L, the NLWP (number of threads) and LWP (thread ID) columns will be added.  
+See the c option, the format keyword args, and the format keyword comm.
+
+-o format     User-defined format.  
+format is a single argument in the form of a blank-separated or comma-separated list, 
+which offers a way to specify individual output columns.  
+The recognized keywords are described in the STANDARD FORMAT SPECIFIERS section below.  
+
+Headers may be renamed (ps -o pid,ruser=RealUser -o comm=Command) as desired.  
+If all column headers are empty (ps -o pid= -o comm=) then the header line will not be output.  
+Column width will increase as needed for wide headers; 
+this may be used to widen up columns such as WCHAN (ps -o pid,wchan=WIDE-WCHAN-COLUMN -o comm).  
+Explicit width control (ps opid,wchan:42,cmd) is offered too.  
+The behavior of ps -o pid=X,comm=Y varies with personality; 
+output may be one column named "X,comm=Y" or two columnsnamed "X" and "Y".  
+Use multiple -o options when in doubt.  
+Use the PS_FORMAT environment variable to specify a default as desired; 
+DefSysV and DefBSD are macros that may be used to choose the default UNIX or BSD columns.              
+
+</pre>
+
+<p>然后再来看下<code class="highlighter-rouge">ps -ef</code>的输出结果，其首行如下，说明了输出的各列：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>UID        PID  PPID  C STIME TTY          TIME CMD
+</code></pre></div></div>
+
+<p>我们可以看到 STIM E和 TIME 列，通过 man 其说明如下
+(我这台服务器上 ps 版本为 procps-ng version 3.3.9，man 中找不到 STIME 的解释，通过观察输出，<br />
+我们可以推断这个 STIME 其实和前面 START 是一样的，指的是命令启动的时间，<a href="http://www.linfo.org/ps.html">这里</a>有这个说明）：</p>
+
+<p>TIME 列也和前面说的 TIME 列一样指的命令使用的累积 CPU 时间。</p>
+
+<h1 id="使用-ps-命令查看进程启动的精确时间和启动后所流逝的时间">使用 ps 命令查看进程启动的精确时间和启动后所流逝的时间</h1>
+
+<p>回到引言中的问题，同事实际要问的是一个进程启动的精确时间和进程启动后所流逝的时间。<br />
+其实这 2 个时间也是可以通过 ps 命令输出的。
+标识符如下：</p>
+
+<pre>
+       lstart      STARTED   time the command started.  See also bsdstart, start, start_time, and stime.
+       etime       ELAPSED   elapsed time since the process was started, in the form [[DD-]hh:]mm:ss.
+</pre>
+
+<p>例子：</p>
+
+<p>查看 nginx 进程启动的精确时间和启动后所流逝的时间：</p>
+
+<pre>
+
+[root@iZ25p102vo3Z ~]# ps -eo pid,lstart,etime,cmd | grep nginx
+16968 Fri Mar  4 16:04:27 2016 41-21:14:04 nginx: master process /usr/sbin/nginx
+17826 Fri Mar  4 22:53:51 2016 41-14:24:40 nginx: worker process
+18312 Fri Apr 15 13:18:31 2016       00:00 grep --color=auto nginx
+
+</pre>
+
+<h1 id="ref">Ref</h1>
+<p>man ps<br />
+<a href="http://www.linfo.org/ps.html">The ps Command</a></p>
+:ET

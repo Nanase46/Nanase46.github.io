@@ -1,0 +1,329 @@
+I"/,<h1 id="1-监控概述">1 监控概述</h1>
+<p>监控是一个体系，而不是特指使用某一款软件。<br />
+监控是运维最重要的工作。（有人说占到 70%，有人说占到 30%。）</p>
+
+<h2 id="11-监控对象">1.1 监控对象</h2>
+
+<ol>
+  <li>监控对象的理解：比如：CPU 是怎么工作的，原理</li>
+  <li>监控对象的指标：比如：CPU 使用率、负载、个数、上下文切换</li>
+  <li>确实性能基准线：怎样才算故障？CPU 负载多少才高？</li>
+</ol>
+
+<h2 id="12-监控范围">1.2 监控范围</h2>
+
+<ol>
+  <li>硬件监控
+    <ul>
+      <li>服务器的硬件监控</li>
+    </ul>
+  </li>
+  <li>操作系统监控
+    <ul>
+      <li>CPU</li>
+      <li>内存</li>
+      <li>IO</li>
+      <li>进程</li>
+    </ul>
+  </li>
+  <li>应用服务监控</li>
+  <li>业务监控
+    <ul>
+      <li>了解业务。<br />
+  举例：小型电商网站，BOSS 可能问运维负责人今天的订单量，这个时候运维负责人必须要知道订单量数据从哪里获得。
+大型公司可能有专门的 BI 团队负责这个。</li>
+    </ul>
+  </li>
+</ol>
+
+<h1 id="2-硬件监控">2 硬件监控</h1>
+
+<h2 id="21-远程控制卡">2.1 远程控制卡</h2>
+<ul>
+  <li>DELL 服务器：iDRAC</li>
+  <li>HP 服务器：ILO</li>
+  <li>IBM 服务器：IMM</li>
+</ul>
+
+<h2 id="22-ipmi">2.2 IPMI</h2>
+
+<p>Linux 可以使用 IPMI 和 BMC 控制器通信，监控和控制硬件设备。</p>
+
+<p>ipmitool</p>
+
+<ol>
+  <li>硬件要支持</li>
+  <li>操作系统要支持  Linux IPMI</li>
+  <li>管理工具 ipmitool</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>安装：
+yum <span class="nb">install </span>OpenIPMI ipmitool <span class="nt">-y</span>
+lsmod | <span class="nb">grep </span>ipmi
+启动：
+systemctl start ipmi
+
+ipmitool <span class="nt">--help</span>
+</code></pre></div></div>
+
+<p>使用 IPMI 有两种方式：</p>
+
+<ol>
+  <li>本地调用</li>
+  <li>远程调用 （IP 地址 用户名 密码）</li>
+</ol>
+
+<p>IPMI 配置网络，有两种方式：</p>
+
+<ol>
+  <li>ipmi over LAN</li>
+  <li>独立  (DELL 服务器前面板配置)</li>
+</ol>
+
+<h2 id="23-路由器和交换机snmp-监控">2.3 路由器和交换机：SNMP 监控</h2>
+
+<h3 id="231-安装配置-snmp">2.3.1 安装配置 snmp</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. 安装 snmp 相关包组：
+yum list | <span class="nb">grep </span>snmp
+yum <span class="nb">install </span>net-snmp net-snmp-utils <span class="nt">-y</span>
+
+2. 配置 snmpd.conf
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cat</span> /etc/snmp/snmpd.conf
+rocommunity	jaminzhang	127.0.0.1
+rocommunity	jaminzhang	192.168.56.11
+
+3. 启动 snmpd
+<span class="o">[</span>root@linux-node1 ~]# systemctl start snmpd
+<span class="o">[</span>root@linux-node1 ~]# netstat <span class="nt">-lntup</span> | <span class="nb">grep </span>snmp
+tcp        0      0 127.0.0.1:199           0.0.0.0:<span class="k">*</span>               LISTEN      28604/snmpd         
+udp        0      0 0.0.0.0:161             0.0.0.0:<span class="k">*</span>                           28604/snmpd  
+
+4. 测试 snmp 获取数据
+<span class="o">[</span>root@linux-node1 ~]# snmpget <span class="nt">-v2c</span> <span class="nt">-c</span> jaminzhang 192.168.56.11 1.3.6.1.2.1.1.3.0
+DISMAN-EVENT-MIB::sysUpTimeInstance <span class="o">=</span> Timeticks: <span class="o">(</span>11110<span class="o">)</span> 0:01:51.10
+<span class="o">[</span>root@linux-node1 ~]# snmpget <span class="nt">-v2c</span> <span class="nt">-c</span> jaminzhang 192.168.56.11 1.3.6.1.4.1.2021.10.1.3.1
+UCD-SNMP-MIB::laLoad.1 <span class="o">=</span> STRING: 0.00
+<span class="o">[</span>root@linux-node1 ~]# snmpwalk <span class="nt">-v2c</span> <span class="nt">-c</span> jaminzhang 192.168.56.11 1.3.6.1.4.1.2021.10.1.3
+UCD-SNMP-MIB::laLoad.1 <span class="o">=</span> STRING: 0.15
+UCD-SNMP-MIB::laLoad.2 <span class="o">=</span> STRING: 0.07
+UCD-SNMP-MIB::laLoad.3 <span class="o">=</span> STRING: 0.06
+</code></pre></div></div>
+
+<h3 id="232-snmp-协议概念及参考资料">2.3.2 SNMP 协议概念及参考资料</h3>
+
+<p>Management information base (MIB)<br />
+Object identifier (OID)</p>
+
+<p>SNMP protocol data unit (PDU) types:</p>
+
+<ul>
+  <li>GetRequest</li>
+  <li>SetRequest</li>
+  <li>GetNextRequest</li>
+  <li>GetBulkRequest</li>
+  <li>Response</li>
+  <li>Trap</li>
+  <li>InformRequest</li>
+</ul>
+
+<p><strong>SNMP 相关参考资料</strong><br />
+<a href="https://en.wikipedia.org/wiki/Simple_Network_Management_Protocol">Simple Network Management Protocol</a><br />
+<a href="http://net-snmp.sourceforge.net/wiki/index.php/TUT:SNMP">SNMP PDU</a><br />
+<a href="https://book.douban.com/subject/25957954/">《Zabbix企业级分布式监控系统》7.5 SNMP 监控方式</a><br />
+<a href="http://linux.chinaunix.net/techdoc/net/2008/08/21/1026818.shtml">SNMP 常用 OID</a><br />
+<a href="http://www.ibm.com/developerworks/cn/linux/l-cn-snmp/index.html">浅谈 Linux 系统中的 SNMP Trap</a><br />
+<a href="http://www.jiankongbao.com/search/snmp">配置 snmp</a></p>
+
+<h2 id="24-硬件监控方式">2.4 硬件监控方式</h2>
+<ol>
+  <li>使用 IPMI</li>
+  <li>使用 SNMP</li>
+  <li>机房巡检</li>
+</ol>
+
+<h1 id="3-系统监控">3 系统监控</h1>
+<ul>
+  <li>CPU</li>
+  <li>内存</li>
+  <li>IO（磁盘、网络）</li>
+</ul>
+
+<h2 id="31-cpu">3.1 CPU</h2>
+
+<p>CPU 三个重要的概念：</p>
+
+<ul>
+  <li>上下文切换：CPU 调度器实施的进程的切换过程/CPU 调度器分配时间片</li>
+  <li>运行队列（负载）</li>
+  <li>使用率：us sy ni id wa hi si st(虚拟化相关)</li>
+</ul>
+
+<p><a href="http://mp.weixin.qq.com/s?__biz=MjM5ODI5Njc2MA==&amp;mid=2655807248&amp;idx=1&amp;sn=eebbf2f2ad14a0573f5b09792017f2ea&amp;scene=23&amp;srcid=0507aCbp5SqhnkddJNEtOOO5#rd">我是一个线程(修订版)</a></p>
+
+<blockquote>
+
+  <p>进程切换也叫上下文切换，contextswitch假如当前进程a的从cpu上被拿走，切换成进程B,那么A的进程描述符要被挂起，意味着它的栈指针、其他寄存器、指令计数器等等在cpu内部维持的信息，
+要保存到进程描述符中，这个过程叫保存现场【Suspend】。而进程描述符是由内核维持的。所以这些信息都保存在内核中。描述符文件大小都是固定的。
+把B进程的栈指针、其他寄存器、指令计数器等信息以及跟当前进程本身运行所独有的数据从内核读取出而且都必须要装载到cpu里面，
+总之B进程调进来的过程叫做恢复现场【Resume】。进程间切换由内核来完成。所以整个过程就是不断的从用户空间转换到内核空间，在转换到用户空间等等所以cpu时间是由用户时间和内核时间共同组成。</p>
+</blockquote>
+
+<p>确定服务类型：</p>
+
+<ul>
+  <li>IO 密集型  比如：数据库</li>
+  <li>CPU 密集型 比如：Web/Mail</li>
+</ul>
+
+<p>确定性能基准线：</p>
+
+<ul>
+  <li>运行队列：1 核心 1-3个线程，比如：1 CPU 4 核心，负载不超过 12（经验值）</li>
+  <li>CPU 使用率：
+    <ul>
+      <li>65%-70% 用户态利用率</li>
+      <li>0%-35% 内核态利用率</li>
+      <li>0%-5%   空闲</li>
+    </ul>
+  </li>
+  <li>上下文切换：基于 CPU 使用率和历史数据来判断</li>
+</ul>
+
+<p>监控工具：</p>
+
+<ul>
+  <li>top   复习 CPU/内存使用率排序 （P/M）</li>
+  <li>sysstat	rpm -ql sysstat
+    <ul>
+      <li>vmstat
+        <ul>
+          <li>r b in cs</li>
+        </ul>
+      </li>
+      <li>mpstat</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="32-内存">3.2 内存</h2>
+
+<blockquote>
+  <p>公有云云主机不设置 swap</p>
+</blockquote>
+
+<p>内存页概念 默认大小为 4KB</p>
+
+<ol>
+  <li>寻址</li>
+  <li>空间
+    合并成连续内存 大页内存</li>
+</ol>
+
+<p>监控工具：</p>
+
+<ul>
+  <li>free</li>
+  <li>vmstat
+    <ul>
+      <li>swpd free buff cache si(swap-&gt;mem) so(mem-&gt;swap)</li>
+    </ul>
+  </li>
+</ul>
+
+<p>内存使用率、交换分区使用率</p>
+
+<blockquote>
+  <p>　
+理论要结合工作实践反复复习：操作系统原理、TCP/IP、《性能之巅：洞悉系统、企业与云计算》</p>
+</blockquote>
+
+<h2 id="33-磁盘">3.3 磁盘</h2>
+<p>块概念 
+内存的脏页内容写到硬盘</p>
+
+<p>IOPS</p>
+
+<ul>
+  <li>顺序 IO</li>
+  <li>随机 IO</li>
+</ul>
+
+<p>监控工具：</p>
+
+<ul>
+  <li>df</li>
+  <li>iotop</li>
+  <li>iostat
+    <ul>
+      <li>tps</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="34-网络">3.4 网络</h2>
+
+<p>监控工具：</p>
+
+<ul>
+  <li>ping</li>
+  <li>iftop</li>
+  <li>带宽</li>
+</ul>
+
+<p>大厂商提供的在线网络测试工具：</p>
+
+<ul>
+  <li>奇云测 http://ce.cloud.360.cn/</li>
+  <li>阿里测 http://alibench.com/</li>
+  <li>站长工具 http://ping.chinaz.com/</li>
+</ul>
+
+<p>应用举例：修改 DNS 后，使用以上工具确认 DNS 修改生效</p>
+
+<h2 id="35-linux-系统监控和性能分析工具-nmon">3.5 Linux 系统监控和性能分析工具 nmon</h2>
+
+<p>该工具比较有用！用于生成系统性能测试数据，并可使用 nmon_analyser 生成对应图形报表。</p>
+
+<p>[root@linux-node1 ~]# ./nmon16e_x86_rhel72 -f -s 5 -c 10 -f</p>
+
+<p><a href="https://www.ibm.com/developerworks/aix/library/au-analyze_aix/">nmon performance: A free tool to analyze AIX and Linux performance</a><br />
+<a href="http://nmon.sourceforge.net/pmwiki.php">nmon for Linux</a><br />
+<a href="https://www.ibm.com/developerworks/community/wikis/home?lang=en#!/wiki/Power+Systems/page/nmon_analyser">nmon_analyser</a></p>
+
+<h1 id="4-应用服务监控">4 应用服务监控</h1>
+
+<p>举例：通过 Nginx 的 http_stub_status_module 模块提供的状态信息来对 Nginx 服务进行监控。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>yum <span class="nb">install </span>gcc glibc gcc-c++ pcre-devel openssl-devel <span class="nt">-y</span>
+  
+wget https://nginx.org/download/nginx-1.10.1.tar.gz
+
+useradd <span class="nt">-s</span> /sbin/nologin <span class="nt">-M</span> www
+  
+  
+configure Shell 脚本 作用：产生 Makefile
+	  
+./configure <span class="nt">--prefix</span><span class="o">=</span>/usr/local/nginx-1.10.1 <span class="se">\</span>
+<span class="nt">--user</span><span class="o">=</span>www <span class="nt">--group</span><span class="o">=</span>www <span class="se">\</span>
+<span class="nt">--with-http_ssl_module</span> <span class="se">\</span>
+<span class="nt">--with-http_stub_status_module</span>
+make <span class="o">&amp;&amp;</span> make <span class="nb">install
+     
+ln</span> <span class="nt">-s</span> /usr/local/nginx-1.10.1 /usr/local/nginx
+nginx <span class="nt">-t</span>
+
+vim nginx.conf
+	  
+location /nginx-status <span class="o">{</span>
+	stub_status on<span class="p">;</span>
+	access_log   off<span class="p">;</span>
+	allow 192.168.56.0/24<span class="p">;</span>
+	deny all<span class="p">;</span>
+<span class="o">}</span>	
+ 
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://mp.weixin.qq.com/s?__biz=MzA4Nzg5Nzc5OA==&amp;mid=400138875&amp;idx=1&amp;sn=01b4ea2978370d215442e4a22d7d2a7f&amp;scene=23&amp;srcid=1028sCxJpZit13UcLIvdvSKo#rd">中小企业监控体系构建实战</a></p>
+:ET

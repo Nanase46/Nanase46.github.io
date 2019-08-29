@@ -1,0 +1,107 @@
+I"[<h1 id="自定义脚本告警原理">自定义脚本告警原理</h1>
+
+<p>自定义告警脚本在<code class="highlighter-rouge">zabbix_server.conf</code>中配置，默认为：
+<code class="highlighter-rouge">AlertScriptsPath=/usr/lib/zabbix/alertscripts</code>  <br />
+Zabbix-Server 在调用脚本的时候，会传递三个变量参数给脚本作为位置参数：$1, $2, $3。
+其中：$1 表示收件人，$2 表示主题，$3 表示内容。</p>
+
+<h1 id="1-准备好自定义告警脚本">1. 准备好自定义告警脚本</h1>
+
+<p>下面我们来写一个测试用的脚本。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 alertscripts]# <span class="nb">cat </span>alert_test.sh 
+<span class="c">#!/bin/bash</span>
+
+<span class="nv">TO</span><span class="o">=</span><span class="nv">$1</span>
+<span class="nv">SUBJECT</span><span class="o">=</span><span class="nv">$2</span>
+<span class="nv">BODY</span><span class="o">=</span><span class="nv">$3</span>
+
+<span class="nb">echo</span> <span class="s2">"Send to: </span><span class="nv">$TO</span><span class="s2"> "</span> <span class="o">&gt;&gt;</span> /tmp/test_alert.log
+<span class="nb">echo</span> <span class="s2">"Subject: </span><span class="nv">$SUBJECT</span><span class="s2">"</span> <span class="o">&gt;&gt;</span> /tmp/test_alert.log
+<span class="nb">echo</span> <span class="s2">"Body: </span><span class="nv">$BODY</span><span class="s2">"</span> <span class="o">&gt;&gt;</span> /tmp/test_alert.log
+
+<span class="c"># 以上脚本的日志文件需要让 zabbix 用户读写</span>
+<span class="nb">touch</span> /tmp/test_alert.log
+<span class="nb">chown </span>zabbix.zabbix /tmp/test_alert.log
+
+</code></pre></div></div>
+
+<p>自定义脚本可以根据自己的需要配置，比如短信发送的脚本。</p>
+
+<h1 id="2-创建配置自定义的告警方式-media-type">2. 创建配置自定义的告警方式 Media Type</h1>
+
+<p>选择 <code class="highlighter-rouge">Administration -&gt; Media types</code>，创建自定义告警方式，<br />
+Type 选择 Script，Script name 指定自定义的告警脚本，<br />
+Script parameters 一般设置如下三个：</p>
+
+<ul>
+  <li>{ALERT.SENDTO}</li>
+  <li>{ALERT.SUBJECT}</li>
+  <li>{ALERT.MESSAGE}</li>
+</ul>
+
+<h1 id="3-将自定义的告警方式指定给用户">3. 将自定义的告警方式指定给用户</h1>
+
+<p>定位到 <code class="highlighter-rouge">Administration -&gt; Users -&gt; Media</code>，添加自定义告警的 Media，<br />
+注意 Media 中 Type 和 Send to 配置，和自定义告警脚本对应。</p>
+
+<h1 id="4-配置自定义告警脚本的动作-action">4. 配置自定义告警脚本的动作 Action</h1>
+
+<p>定位到 <code class="highlighter-rouge">Configuration -&gt; Actions</code>，进入告警动作配置界面，创建新的 action。</p>
+
+<p>接下来的 Action/Condition/Operation 根据自定义告警脚本对应配置。</p>
+
+<h1 id="自定义告警脚本执行结果">自定义告警脚本执行结果</h1>
+
+<p>如下，可以看到在日志文件中生成了对应配置的内容</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">tail</span> <span class="nt">-n</span> 40 /tmp/test_alert.log 
+Body: Trigger: User login number gt 4 on linux-node2.example.com
+Trigger status: PROBLEM
+Trigger severity: Warning
+Trigger URL: 
+
+Item values:
+
+1. Number of logged <span class="k">in </span><span class="nb">users</span> <span class="o">(</span>linux-node2.example.com:system.users.num<span class="o">)</span>: 5
+2. <span class="k">*</span>UNKNOWN<span class="k">*</span> <span class="o">(</span><span class="k">*</span>UNKNOWN<span class="k">*</span>:<span class="k">*</span>UNKNOWN<span class="k">*</span><span class="o">)</span>: <span class="k">*</span>UNKNOWN<span class="k">*</span>
+3. <span class="k">*</span>UNKNOWN<span class="k">*</span> <span class="o">(</span><span class="k">*</span>UNKNOWN<span class="k">*</span>:<span class="k">*</span>UNKNOWN<span class="k">*</span><span class="o">)</span>: <span class="k">*</span>UNKNOWN<span class="k">*</span>
+
+Original event ID: 248
+Send to: 779432xxx 
+Subject: PROBLEM: User login number gt 4 on linux-node2.example.com
+Body: Trigger: User login number gt 4 on linux-node2.example.com
+Trigger status: PROBLEM
+Trigger severity: Warning
+Trigger URL: 
+
+Item values:
+
+1. Number of logged <span class="k">in </span><span class="nb">users</span> <span class="o">(</span>linux-node2.example.com:system.users.num<span class="o">)</span>: 5
+2. <span class="k">*</span>UNKNOWN<span class="k">*</span> <span class="o">(</span><span class="k">*</span>UNKNOWN<span class="k">*</span>:<span class="k">*</span>UNKNOWN<span class="k">*</span><span class="o">)</span>: <span class="k">*</span>UNKNOWN<span class="k">*</span>
+3. <span class="k">*</span>UNKNOWN<span class="k">*</span> <span class="o">(</span><span class="k">*</span>UNKNOWN<span class="k">*</span>:<span class="k">*</span>UNKNOWN<span class="k">*</span><span class="o">)</span>: <span class="k">*</span>UNKNOWN<span class="k">*</span>
+
+Original event ID: 248
+Send to: 779432xxx 
+Subject: OK: User login number gt 4 on linux-node2.example.com
+Body: Trigger: User login number gt 4 on linux-node2.example.com
+Trigger status: OK
+Trigger severity: Warning
+Trigger URL: 
+
+Item values:
+
+1. Number of logged <span class="k">in </span><span class="nb">users</span> <span class="o">(</span>linux-node2.example.com:system.users.num<span class="o">)</span>: 4
+2. <span class="k">*</span>UNKNOWN<span class="k">*</span> <span class="o">(</span><span class="k">*</span>UNKNOWN<span class="k">*</span>:<span class="k">*</span>UNKNOWN<span class="k">*</span><span class="o">)</span>: <span class="k">*</span>UNKNOWN<span class="k">*</span>
+3. <span class="k">*</span>UNKNOWN<span class="k">*</span> <span class="o">(</span><span class="k">*</span>UNKNOWN<span class="k">*</span>:<span class="k">*</span>UNKNOWN<span class="k">*</span><span class="o">)</span>: <span class="k">*</span>UNKNOWN<span class="k">*</span>
+
+Original event ID: 248
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.zabbix.com/documentation/3.0/manual/config/notifications/media/script">Custom alertscripts</a><br />
+<a href="http://qicheng0211.blog.51cto.com/3958621/1551105">Zabbix 应用之短信报警</a></p>
+:ET

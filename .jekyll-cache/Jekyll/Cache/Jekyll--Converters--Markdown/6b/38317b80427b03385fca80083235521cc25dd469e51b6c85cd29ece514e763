@@ -1,0 +1,68 @@
+I"�<p>安装 Nginx</p>
+
+<h1 id="linux-软件包安装方式">Linux 软件包安装方式</h1>
+
+<p>CentOS 6/7 系列操作系统下，可以通过设置 Nginx 的官方 yum 源，然后通过 yum 安装。</p>
+
+<pre>
+
+To set up the yum repository for RHEL/CentOS, 
+create the file named /etc/yum.repos.d/nginx.repo with the following contents:
+
+[nginx]
+name=nginx repo
+baseurl=http://nginx.org/packages/OS/OSRELEASE/$basearch/
+gpgcheck=0
+enabled=1
+
+
+Replace “OS” with “rhel” or “centos”, depending on the distribution used, 
+and “OSRELEASE” with “6” or “7”, for 6.x or 7.x versions, respectively.
+
+</pre>
+
+<h1 id="linux-源码编译安装方式">Linux 源码编译安装方式</h1>
+
+<h2 id="1-准备先决条件">1. 准备先决条件</h2>
+
+<p>事先安装好启用特定 Nginx 模块所需要的软件库和工具</p>
+
+<p><code class="highlighter-rouge">
+yum install gcc pcre pcre-devel zlib zlib-devel openssl openssl-devel libxml2 libxml2-devel libxslt libxslt-devel gd-devel geoip geoip-devel -y
+</code></p>
+
+<h2 id="2-下载解压配置编译安装-nginx">2. 下载、解压、配置、编译、安装 Nginx</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+wget http://nginx.org/download/nginx-1.12.0.tar.gz
+<span class="nb">tar </span>zxvf nginx-1.12.0.tar.gz
+<span class="nb">cd </span>nginx-1.12.0
+
+./configure <span class="nt">--prefix</span><span class="o">=</span>/usr/local/nginx-1.12.0 <span class="se">\</span>
+<span class="nt">--with-http_ssl_module</span> <span class="se">\</span>
+<span class="nt">--with-http_realip_module</span> <span class="se">\</span>
+<span class="nt">--with-http_addition_module</span> <span class="se">\</span>
+<span class="nt">--with-http_xslt_module</span><span class="o">=</span>dynamic <span class="se">\</span>
+<span class="nt">--with-http_image_filter_module</span><span class="o">=</span>dynamic <span class="se">\</span>
+<span class="nt">--with-http_geoip_module</span><span class="o">=</span>dynamic <span class="se">\</span>
+<span class="nt">--with-http_sub_module</span> <span class="se">\</span>
+<span class="nt">--with-http_dav_module</span> <span class="se">\</span>
+<span class="nt">--with-http_flv_module</span> <span class="se">\</span>
+<span class="nt">--with-http_gzip_static_module</span> <span class="se">\</span>
+<span class="nt">--with-http_random_index_module</span> <span class="se">\</span>
+<span class="nt">--with-http_secure_link_module</span> <span class="se">\</span>
+<span class="nt">--with-http_stub_status_module</span> 
+
+make
+
+make <span class="nb">install 
+
+ln</span> <span class="nt">-s</span> /usr/local/nginx-1.12.0/ /usr/local/nginx
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://nginx.org/en/docs/install.html">Installing nginx</a><br />
+<a href="http://nginx.org/en/linux_packages.html">nginx: Linux packages</a><br />
+<a href="http://nginx.org/en/docs/configure.html">Building nginx from Sources</a></p>
+:ET

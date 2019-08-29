@@ -1,0 +1,263 @@
+I"�C<p>Docker Registry 构建私有镜像仓库</p>
+
+<h1 id="docker-registry-简介">Docker Registry 简介</h1>
+
+<p>Docker Registry 是官方提供的工具，可以用于构建私有的镜像仓库。<br />
+私有镜像仓库的好处有很多，官方列举了如下几点：</p>
+
+<ul>
+  <li>tightly control where your images are being stored</li>
+  <li>fully own your images distribution pipeline</li>
+  <li>integrate image storage and distribution tightly into your in-house development workflow</li>
+</ul>
+
+<p>我将在 docker registry 前端配置 Nginx 代理（提供 SSL、基本认证支持）。</p>
+
+<h1 id="1-申请免费的-ssl-证书并配置-nginx-ssl-和基本认证">1 申请免费的 SSL 证书并配置 Nginx SSL 和基本认证</h1>
+
+<h2 id="11-申请免费的-ssl-证书">1.1 申请免费的 SSL 证书</h2>
+
+<p>在沃通官网申请免费 SSL 证书<br />
+<a href="https://buy.wosign.com/free/">申请地址</a></p>
+
+<h2 id="12-配置-nginx-ssl">1.2 配置 Nginx SSL</h2>
+
+<p>参考沃通<a href="http://www.wosign.com/Docdownload/Nginx%20SSL%E8%AF%81%E4%B9%A6%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97.pdf">官网文档</a>部署 Nginx SSL 证书</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 将 SSL 证书放置在 /etc/nginx/ssl/ 下</span>
+<span class="o">[</span>root@linux-node1 ~]# ll /etc/nginx/ssl/
+total 12
+<span class="nt">-rw-r--r--</span> 1 root root 6664 Sep 21 18:41 domain.crt
+<span class="nt">-rw-r--r--</span> 1 root root 1674 Sep 21 18:41 domain.key
+
+</code></pre></div></div>
+
+<h2 id="13-生成基本认证用户名密码文件">1.3 生成基本认证用户名密码文件</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# yum <span class="nb">install </span>httpd-tools <span class="nt">-y</span>
+<span class="o">[</span>root@linux-node1 ~]# htpasswd <span class="nt">-c</span> /etc/nginx/conf.d/nginx.htpasswd admin
+New password: <span class="c"># 密码为 admin</span>
+Re-type new password: 
+Adding password <span class="k">for </span>user admin
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cat</span> /etc/nginx/conf.d/nginx.htpasswd
+admin:<span class="nv">$apr1$i0szKFN2$0aiDnahUbl7EA4HK7wxwz</span><span class="nb">.</span>
+
+</code></pre></div></div>
+
+<h2 id="14-添加-nginx-配置文件">1.4 添加 Nginx 配置文件</h2>
+
+<p>添加如下的 nginx 配置文件（根据上面的相关配置指定好 SSL 证书/基本认证） ：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">cat</span> /etc/nginx/conf.d/registry.jaminzhang.me.conf 
+server <span class="o">{</span>
+  listen 443 ssl<span class="p">;</span>
+  server_name registry.jaminzhang.me<span class="p">;</span>
+
+  <span class="c"># SSL</span>
+  ssl_certificate <span class="s2">"/etc/nginx/ssl/domain.crt"</span><span class="p">;</span>			<span class="c"># 指定 SSL 证书</span>
+  ssl_certificate_key <span class="s2">"/etc/nginx/ssl/domain.key"</span><span class="p">;</span>		<span class="c"># 指定 SSL 证书私钥</span>
+
+  <span class="c"># Recommendations from https://raymii.org/s/tutorials/Strong_SSL_Security_On_nginx.html</span>
+  ssl_session_timeout 5m<span class="p">;</span>
+  ssl_protocols TLSv1 TLSv1.1 TLSv1.2<span class="p">;</span>
+  ssl_ciphers AESGCM:ALL:!DH:!EXPORT:!RC4:+HIGH:!MEDIUM:!LOW:!aNull:!eNULL<span class="p">;</span>
+  ssl_prefer_server_ciphers on<span class="p">;</span>
+  ssl_session_cache shared:SSL:10m<span class="p">;</span>
+
+  <span class="c"># disable any limits to avoid HTTP 413 for large image uploads</span>
+  client_max_body_size 0<span class="p">;</span>
+
+  <span class="c"># required to avoid HTTP 411: see Issue #1486 (https://github.com/docker/docker/issues/1486)</span>
+  chunked_transfer_encoding on<span class="p">;</span>
+
+  
+  location /v2/ <span class="o">{</span>
+    <span class="c">#root        /usr/share/nginx/html;</span>
+    <span class="c">#index       index.html;</span>
+    <span class="c"># Do not allow connections from docker 1.5 and earlier</span>
+    <span class="c"># docker pre-1.6.0 did not properly set the user agent on ping, catch "Go *" user agents</span>
+    <span class="k">if</span> <span class="o">(</span><span class="nv">$http_user_agent</span> ~ <span class="s2">"^(docker</span><span class="se">\/</span><span class="s2">1</span><span class="se">\.</span><span class="s2">(3|4|5(?!</span><span class="se">\.</span><span class="s2">[0-9]-dev))|Go ).*</span><span class="se">\$</span><span class="s2">"</span> <span class="o">)</span> <span class="o">{</span>
+      <span class="k">return </span>404<span class="p">;</span>
+    <span class="o">}</span>
+
+    <span class="c"># To add basic authentication to v2 use auth_basic setting.</span>
+    auth_basic <span class="s2">"Registry realm"</span><span class="p">;</span>
+    auth_basic_user_file /etc/nginx/conf.d/nginx.htpasswd<span class="p">;</span>
+
+    <span class="c">## If $docker_distribution_api_version is empty, the header will not be added.</span>
+    <span class="c">## See the map directive above where this variable is defined.</span>
+    add_header <span class="s1">'Docker-Distribution-Api-Version'</span> <span class="s1">'registry/2.0'</span> always<span class="p">;</span>		<span class="c"># 此处需要配置，不然会出现后面会说到的问题</span>
+
+    proxy_pass                          http://127.0.0.1:5000<span class="p">;</span>				<span class="c"># nginx 将收到的请求转发给本机的 Registry 容器</span>
+    proxy_set_header  Host              <span class="nv">$http_host</span><span class="p">;</span>   <span class="c"># required for docker client's sake</span>
+    proxy_set_header  X-Real-IP         <span class="nv">$remote_addr</span><span class="p">;</span> <span class="c"># pass on real client's IP</span>
+    proxy_set_header  X-Forwarded-For   <span class="nv">$proxy_add_x_forwarded_for</span><span class="p">;</span>
+    proxy_set_header  X-Forwarded-Proto <span class="nv">$scheme</span><span class="p">;</span>
+    proxy_read_timeout                  900<span class="p">;</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<h1 id="2-安装运行-docker-registry">2 安装运行 Docker Registry</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 运行 docker registry 容器，镜像存储目录为 /opt/data/registry</span>
+<span class="o">[</span>root@linux-node1 ~]# docker run <span class="nt">-d</span> <span class="nt">--name</span> registry <span class="se">\</span>
+<span class="nt">-p</span> 5000:5000 <span class="se">\</span>
+<span class="nt">-v</span> /opt/data/registry:/var/lib/registry <span class="se">\</span>
+registry:2
+bdd0ef575a65397351cbb4034f18042b80de47916bf24806f48a0126c633ce3a
+<span class="o">[</span>root@linux-node1 ~]# docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                    NAMES
+bdd0ef575a65        registry:2          <span class="s2">"/entrypoint.sh /etc/"</span>   11 seconds ago      Up 11 seconds       0.0.0.0:5000-&gt;5000/tcp   registry
+</code></pre></div></div>
+
+<h1 id="3-测试验证-docker-registry">3 测试验证 Docker Registry</h1>
+
+<h1 id="31-连通性验证">3.1 连通性验证</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# curl <span class="nt">-i</span> <span class="nt">-k</span> <span class="nt">-v</span> https://admin:admin@registry.jaminzhang.me/v2/
+<span class="k">*</span> About to connect<span class="o">()</span> to registry.jaminzhang.me port 443 <span class="o">(</span><span class="c">#0)			# 如果域名没在公网解析，需要在 /etc/hosts 中添加解析</span>
+<span class="k">*</span>   Trying 192.168.56.11...
+<span class="k">*</span> Connected to registry.jaminzhang.me <span class="o">(</span>192.168.56.11<span class="o">)</span> port 443 <span class="o">(</span><span class="c">#0)</span>
+<span class="k">*</span> Initializing NSS with certpath: sql:/etc/pki/nssdb
+<span class="k">*</span> skipping SSL peer certificate verification
+<span class="k">*</span> SSL connection using TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+<span class="k">*</span> Server certificate:
+<span class="k">*</span> 	subject: <span class="nv">CN</span><span class="o">=</span>registry.jaminzhang.me,C<span class="o">=</span>CN
+<span class="k">*</span> 	start <span class="nb">date</span>: Sep 21 10:08:39 2016 GMT
+<span class="k">*</span> 	expire <span class="nb">date</span>: Sep 21 10:08:39 2019 GMT
+<span class="k">*</span> 	common name: registry.jaminzhang.me
+<span class="k">*</span> 	issuer: <span class="nv">CN</span><span class="o">=</span>CA 沃通免费SSL证书 G2,O<span class="o">=</span>WoSign CA Limited,C<span class="o">=</span>CN
+<span class="k">*</span> Server auth using Basic with user <span class="s1">'admin'</span>
+<span class="o">&gt;</span> GET /v2/ HTTP/1.1
+<span class="o">&gt;</span> Authorization: Basic <span class="nv">YWRtaW46YWRtaW4</span><span class="o">=</span>
+<span class="o">&gt;</span> User-Agent: curl/7.29.0
+<span class="o">&gt;</span> Host: registry.jaminzhang.me
+<span class="o">&gt;</span> Accept: <span class="k">*</span>/<span class="k">*</span>
+<span class="o">&gt;</span> 
+&lt; HTTP/1.1 200 OK
+HTTP/1.1 200 OK
+&lt; Server: nginx/1.10.1
+Server: nginx/1.10.1
+&lt; Date: Fri, 30 Sep 2016 10:39:05 GMT
+Date: Fri, 30 Sep 2016 10:39:05 GMT
+&lt; Content-Type: application/json<span class="p">;</span> <span class="nv">charset</span><span class="o">=</span>utf-8
+Content-Type: application/json<span class="p">;</span> <span class="nv">charset</span><span class="o">=</span>utf-8
+&lt; Content-Length: 2
+Content-Length: 2
+&lt; Connection: keep-alive
+Connection: keep-alive
+&lt; Docker-Distribution-Api-Version: registry/2.0
+Docker-Distribution-Api-Version: registry/2.0
+&lt; X-Content-Type-Options: nosniff
+X-Content-Type-Options: nosniff
+&lt; Docker-Distribution-Api-Version: registry/2.0
+Docker-Distribution-Api-Version: registry/2.0
+
+&lt; 
+<span class="k">*</span> Connection <span class="c">#0 to host registry.jaminzhang.me left intact</span>
+
+</code></pre></div></div>
+
+<h2 id="32-身份验证">3.2 身份验证</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# docker login <span class="nt">-u</span> admin <span class="nt">-p</span> admin <span class="nt">-e</span> <span class="s2">"zhangjamin@163.com"</span> registry.jaminzhang.me
+WARNING: login credentials saved <span class="k">in</span> /root/.docker/config.json
+Login Succeeded
+
+</code></pre></div></div>
+
+<h2 id="33-上传查看镜像">3.3 上传、查看镜像</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# docker tag centos registry.jaminzhang.me/centos
+<span class="o">[</span>root@linux-node1 ~]# docker push registry.jaminzhang.me/centos
+The push refers to a repository <span class="o">[</span>registry.jaminzhang.me/centos]
+0aeb287b1ba9: Pushed 
+latest: digest: sha256:2ae0d2c881c7123870114fb9cc7afabd1e31f9888dac8286884f6cf59373ed9b size: 507
+
+<span class="c"># 文件目录结构</span>
+<span class="o">[</span>root@linux-node1 repositories]# <span class="nb">pwd</span>
+/opt/data/registry/docker/registry/v2/repositories	<span class="c"># 启动 Registry 容器时 /var/lib/registry 是挂载到 /opt/data/registry/ 的</span>
+<span class="o">[</span>root@linux-node1 repositories]# tree
+<span class="nb">.</span>
+└── centos
+    ├── _layers
+    │   └── sha256
+    │       ├── 8d30e94188e7f13642d975e70c484e48c33867f3ede3277df1145803fa996ac1
+    │       │   └── <span class="nb">link</span>
+    │       └── 980e0e4c79ec933406e467a296ce3b86685e6b42eed2f873745e6a91d718e37a
+    │           └── <span class="nb">link</span>
+    ├── _manifests
+    │   ├── revisions
+    │   │   └── sha256
+    │   │       └── 2ae0d2c881c7123870114fb9cc7afabd1e31f9888dac8286884f6cf59373ed9b
+    │   │           └── <span class="nb">link</span>
+    │   └── tags
+    │       └── latest
+    │           ├── current
+    │           │   └── <span class="nb">link</span>
+    │           └── index
+    │               └── sha256
+    │                   └── 2ae0d2c881c7123870114fb9cc7afabd1e31f9888dac8286884f6cf59373ed9b
+    │                       └── <span class="nb">link</span>
+    └── _uploads
+
+16 directories, 5 files
+
+<span class="o">[</span>root@linux-node1 ~]# docker pull registry.jaminzhang.me/centos
+Using default tag: latest
+Trying to pull repository registry.jaminzhang.me/centos ... 
+latest: Pulling from registry.jaminzhang.me/centos
+Digest: sha256:2ae0d2c881c7123870114fb9cc7afabd1e31f9888dac8286884f6cf59373ed9b
+Status: Image is up to <span class="nb">date </span><span class="k">for </span>registry.jaminzhang.me/centos:latest
+
+</code></pre></div></div>
+
+<h1 id="遇到的问题">遇到的问题</h1>
+
+<p>这次 Docker Registry 遇到了太多的问题，弄了几天了，网上一搜索，也是各种吐槽坑太多，现在应该好好总结一下。<br />
+首先第一个感想是首先要明白 Docker Registry 是什么，先按照官方文档来理解熟悉它的安装配置及使用。<br />
+这次思路太乱，Docker Registry 本身没有按照官方文档来安装配置一遍，好多模棱两可，
+然后再结合 Nginx 前端代理 SSL、基本认证，把问题弄得更复杂了。</p>
+
+<p><strong>总结：学习一项具体技术方案时要严格按照官方文档（或其他一份较好的文档，不能看太多，不然会混乱）来安装搭建一次，
+不要加任何自定义自以为正确的处理，搭建成功后再进行自定义操作，然后可以再看看其他的文档怎么做。</strong></p>
+
+<h2 id="1-本地测试-docker-login-出现-service-unavailable是由于使用了-http-代理">1. 本地测试 docker login 出现 Service Unavailable，是由于使用了 HTTP 代理</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# docker login https://registry.jaminzhang.me
+Error response from daemon: invalid registry endpoint https://registry.jaminzhang.me/v0/: unable to ping registry endpoint https://registry.jaminzhang.me/v0/
+v2 ping attempt failed with error: Get https://registry.jaminzhang.me/v2/: Service Unavailable
+ v1 ping attempt failed with error: Get https://registry.jaminzhang.me/v1/_ping: Service Unavailable. If this private registry supports only HTTP or HTTPS with an unknown CA certificate, please add <span class="sb">`</span><span class="nt">--insecure-registry</span> registry.jaminzhang.me<span class="sb">`</span> to the daemon<span class="s1">'s arguments. In the case of HTTPS, if you have access to the registry'</span>s CA certificate, no need <span class="k">for </span>the flag<span class="p">;</span> simply place the CA certificate at /etc/docker/certs.d/registry.jaminzhang.me/ca.crt
+
+</code></pre></div></div>
+
+<p>这个坑是由于之前功夫网原因，下载官方镜像太慢，添加了公司代理，需要删除然后重启 Docker。</p>
+
+<h2 id="2-nginx-配置文件问题">2. nginx 配置文件问题</h2>
+
+<p>Nginx 很久没接触（生产直接使用私有 yum 源上的 nginx），修改配置文件后，没有监听 443 端口，排错花了些时间。<br />
+配置文件检查有语法错误，然后使用独立的配置文件时，yum 安装的 nginx 配置文件 nginx.conf 中默认没有 <code class="highlighter-rouge">include conf.d/*.conf;</code>，需要额外添加。</p>
+
+<h2 id="3-docker-login-fails-with-v211-registry-because-auth-fails-and-calls-v1-endpoints">3. Docker login fails with v2.1.1 registry because auth fails and calls v1 endpoints</h2>
+
+<p>和这位一样的问题 <a href="https://github.com/docker/docker/issues/16676">Docker login fails with v2.1.1 registry because auth fails and calls v1 endpoints</a>，我就不再细说了。
+这个问题是由于没有仔细使用官网的配置文件，漏掉了一行 <code class="highlighter-rouge">add_header 'Docker-Distribution-Api-Version' 'registry/2.0' always;</code> 配置</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://docs.docker.com/registry/">Docker Registry</a><br />
+<a href="https://github.com/docker/distribution/blob/master/docs/deploying.md">Deploying a registry server</a><br />
+<a href="https://docs.docker.com/registry/recipes/nginx/">Authenticating proxy with nginx</a>
+<a href="http://unixman.blog.51cto.com/10163040/1707423">Docker Registry V2(distribution) &amp; Proxy(nginx) 的搭建经历</a><br />
+<a href="http://tonybai.com/2016/02/26/deploy-a-private-docker-registry/">部署私有 Docker Registry</a></p>
+
+:ET

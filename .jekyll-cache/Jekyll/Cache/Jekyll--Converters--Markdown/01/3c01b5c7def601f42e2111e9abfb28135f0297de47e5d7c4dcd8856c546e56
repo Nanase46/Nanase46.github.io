@@ -1,0 +1,163 @@
+I"�<h1 id="4-生产环境常见故障处理">4 生产环境常见故障处理</h1>
+
+<blockquote>
+
+  <p>一般硬盘也要备用几块，因为随着发展，可能这些型号的硬盘不好买到了，一般的事故不会在开始一两年出，<br />
+在硬件老化的时候出故障的频率高。</p>
+</blockquote>
+
+<h2 id="41-硬盘故障">4.1 硬盘故障</h2>
+
+<p>如果底层做了 RAID 配置，有硬件故障，直接更换硬盘，会自动同步数据。<br />
+如果没有做 RAID，处理方法如下：</p>
+
+<p>正常节点上执行 <code class="highlighter-rouge">gluster volume status</code>，记录故障节点 uuid<br />
+执行：getfattr -d -m ‘.*’ /brick
+记录 trusted.gluster.volume-id 及 trusted.gfid</p>
+
+<p>以下为故障模拟及修复过程：</p>
+
+<p>在 VMware Workstation 上移除 mystorage1 主机的第三块硬盘（对应 sdc /storage/brick2），相当于硬盘故障</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 系统提示如下：</span>
+Message from syslogd@linux-node01 at Jul 30 08:41:46 ...
+ storage-brick2[5893]: <span class="o">[</span>2016-07-30 00:41:46.729896] M <span class="o">[</span>MSGID: 113075] <span class="o">[</span>posix-helpers.c:1844:posix_health_check_thread_proc] 0-gv2-posix: health-check failed, going down
+
+Message from syslogd@linux-node01 at Jul 30 08:42:16 ...
+ storage-brick2[5893]: <span class="o">[</span>2016-07-30 00:42:16.730518] M <span class="o">[</span>MSGID: 113075] <span class="o">[</span>posix-helpers.c:1850:posix_health_check_thread_proc] 0-gv2-posix: still alive! -&gt; SIGTERM
+
+ <span class="c"># 查看卷状态，mystorage1:/storage/brick2 不在线了，不过这是分布式复制卷，还可以访问另外 brick 上的数据</span>
+<span class="o">[</span>root@mystorage1 ~]# gluster volume status gv2 
+Status of volume: gv2
+Gluster process                             TCP Port  RDMA Port  Online  Pid
+<span class="nt">------------------------------------------------------------------------------</span>
+Brick mystorage1:/storage/brick2            N/A       N/A        N       N/A  
+
+</code></pre></div></div>
+
+<p>在 VMware Workstation 上新增 mystorage1 一块硬盘，相当于更换了新硬盘，下面先格式挂载新硬盘：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+mkfs.xfs <span class="nt">-f</span> /dev/sdc
+<span class="nb">mkdir</span> <span class="nt">-p</span> /storage/brick2
+mount <span class="nt">-a</span>
+<span class="nb">df</span> <span class="nt">-h</span>
+
+<span class="c"># 新硬盘挂载后目录为空</span>
+<span class="o">[</span>root@mystorage1 ~]# ll /storage/brick2
+total 0
+
+</code></pre></div></div>
+
+<p>开始手动配置新增硬盘的 gluster 参数</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 在 mystorage2 是获取 glusterfs 相关参数：</span>
+<span class="o">[</span>root@mystorage2 tmp]# getfattr <span class="nt">-d</span> <span class="nt">-m</span> <span class="s1">'.*'</span>  /storage/brick2
+getfattr: Removing leading <span class="s1">'/'</span> from absolute path names
+<span class="c"># file: storage/brick2</span>
+trusted.gfid<span class="o">=</span><span class="nv">0sAAAAAAAAAAAAAAAAAAAAAQ</span><span class="o">==</span>
+trusted.glusterfs.dht<span class="o">=</span>0sAAAAAQAAAAAAAAAAf////g<span class="o">==</span>
+trusted.glusterfs.dht.commithash<span class="o">=</span><span class="s2">"3168624641"</span>
+trusted.glusterfs.quota.dirty<span class="o">=</span><span class="nv">0sMAA</span><span class="o">=</span>
+trusted.glusterfs.quota.size.1<span class="o">=</span>0sAAAAAATiAAAAAAAAAAAAAwAAAAAAAAAE
+trusted.glusterfs.volume-id<span class="o">=</span><span class="nv">0sEZKGliY6THqhVVEVrykiHw</span><span class="o">==</span>
+
+<span class="c"># 在 mystorage1 上执行配置 glusterfs 参数和上述一样</span>
+
+setfattr <span class="nt">-n</span> trusted.gfid <span class="nt">-v</span> <span class="nv">0sAAAAAAAAAAAAAAAAAAAAAQ</span><span class="o">==</span> /storage/brick2
+setfattr <span class="nt">-n</span> trusted.glusterfs.dht <span class="nt">-v</span> 0sAAAAAQAAAAAAAAAAf////g<span class="o">==</span> /storage/brick2
+setfattr <span class="nt">-n</span> trusted.glusterfs.dht.commithash <span class="nt">-v</span> <span class="s2">"3168624641"</span> /storage/brick2
+setfattr <span class="nt">-n</span> trusted.glusterfs.quota.dirty <span class="nt">-v</span> <span class="nv">0sMAA</span><span class="o">=</span> /storage/brick2
+setfattr <span class="nt">-n</span> trusted.glusterfs.quota.size.1 <span class="nt">-v</span> 0sAAAAAATiAAAAAAAAAAAAAwAAAAAAAAAE /storage/brick2
+setfattr <span class="nt">-n</span> trusted.glusterfs.volume-id <span class="nt">-v</span> <span class="nv">0sEZKGliY6THqhVVEVrykiHw</span><span class="o">==</span> /storage/brick2
+
+<span class="o">[</span>root@mystorage1 ~]# /etc/init.d/glusterd restart
+Starting glusterd:                                         <span class="o">[</span>  OK  <span class="o">]</span>
+
+
+<span class="o">[</span>root@mystorage1 ~]# gluster volume heal gv2 info
+Brick mystorage1:/storage/brick2
+Status: Connected
+Number of entries: 0
+
+Brick mystorage2:/storage/brick2
+/data 
+Status: Connected
+Number of entries: 1		<span class="c"># 显示一个条目在修复，自动修复完成后会为 0</span>
+
+Brick mystorage3:/storage/brick1
+Status: Connected
+Number of entries: 0
+
+Brick mystorage4:/storage/brick1
+Status: Connected
+Number of entries: 0
+
+<span class="c"># 自动修复同步完成后，查看新硬盘的数据同步过来了</span>
+<span class="o">[</span>root@mystorage1 ~]# ll /storage/brick2
+total 40012
+<span class="nt">-rw-r--r--</span> 2 root root 20480000 Jul 30 02:41 20M.file
+<span class="nt">-rw-r--r--</span> 2 root root 20480000 Jul 30 03:13 20M.file1
+drwxr-xr-x 2 root root       21 Jul 30 09:14 data
+</code></pre></div></div>
+
+<h2 id="42-一台主机故障">4.2 一台主机故障</h2>
+
+<p>一台节点故障的情况包含以下情况：</p>
+
+<ul>
+  <li>物理故障</li>
+  <li>同时有多块硬盘故障，造成数据丢失</li>
+  <li>系统损坏不可修复</li>
+</ul>
+
+<p>解决方法：</p>
+
+<p>找一台完全一样的机器，至少要保证硬盘数量和大小一致，安装系统，配置和故障机同样的 IP，安装 gluster 软件，<br />
+保证配置一样，在其他健康节点上执行命令 <code class="highlighter-rouge">gluster peer status</code>，查看故障服务器的 uuid</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@mystorage2 ~]# gluster peer status
+Number of Peers: 3
+
+Hostname: mystorage3
+Uuid: 36e4c45c-466f-47b0-b829-dcd4a69ca2e7
+State: Peer <span class="k">in </span>Cluster <span class="o">(</span>Connected<span class="o">)</span>
+
+Hostname: mystorage4
+Uuid: c607f6c2-bdcb-4768-bc82-4bc2243b1b7a
+State: Peer <span class="k">in </span>Cluster <span class="o">(</span>Connected<span class="o">)</span>
+
+Hostname: mystorage1
+Uuid: 6e6a84af-ac7a-44eb-85c9-50f1f46acef1
+State: Peer <span class="k">in </span>Cluster <span class="o">(</span>Disconnected<span class="o">)</span>
+</code></pre></div></div>
+<p>修改新加机器的 /var/lib/glusterd/glusterd.info 和 故障机器一样</p>
+
+<blockquote>
+
+  <p>[root@mystorage1 ~]# cat /var/lib/glusterd/glusterd.info<br />
+UUID=6e6a84af-ac7a-44eb-85c9-50f1f46acef1<br />
+operating-version=30712</p>
+</blockquote>
+
+<p>在信任存储池中任意节点执行</p>
+
+<blockquote>
+
+  <p>gluster volume heal gv2 full</p>
+</blockquote>
+
+<p>就会自动开始同步，但在同步的时候会影响整个系统的性能。</p>
+
+<p>可以查看状态</p>
+
+<blockquote>
+
+  <p>gluster volume heal gv2 info</p>
+</blockquote>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://udn.yyuap.com/thread-67733-1-1.html">KVM虚拟化开源高可用方案(七)GLUSTERFS搭建及常见故障处理</a><br />
+<a href="http://www.sklinux.com/1435">Glusterfs集群分布式文件系统掉brick的处理</a></p>
+:ET

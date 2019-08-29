@@ -1,0 +1,99 @@
+I"�<p>Python Socket 编程入门演示</p>
+
+<h1 id="引言">引言</h1>
+<p>今天电话面试有个问题，是问我怎么用 Python 进行 Socket 编程，因为自己很久没有用 Python 写过东西了，Socket 编程记得很久之前看过，但具体怎么编写，Socket 模块相关的方法，确实忘记了。<br />
+一直没有碰到写这个的需求，所以就不知道具体怎么写了。<br />
+所以现在我就把这个问题当做一个需求，重新学习一下 Python Socket 编程具体过程与编码。
+看了 Python Socket 编程相关资料演示，还是比较容易快速上手的。</p>
+
+<h1 id="tcp-socket-编程过程与方法图示">TCP Socket 编程过程与方法图示</h1>
+
+<p><img src="http://s3.51cto.com/wyfs02/M01/8A/DD/wKiom1g9Z5iS1tf9AAFr9XDUJts955.png" alt="TCP Socket 编程过程与方法图示" /></p>
+
+<h1 id="python-简单-socket-通信模型编程过程与演示">Python 简单 Socket 通信模型编程过程与演示</h1>
+
+<h2 id="socket-server-服务端脚本文件">socket server 服务端脚本文件</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+
+<span class="c1"># 以元组形式定义一个 IP 地址和端口
+</span><span class="n">ip_port</span> <span class="o">=</span> <span class="p">(</span><span class="s">'127.0.0.1'</span><span class="p">,</span><span class="mi">9999</span><span class="p">)</span>
+
+<span class="c1"># 创建对象并绑定 IP 地址开始监听
+</span><span class="n">sk</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
+<span class="n">sk</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">ip_port</span><span class="p">)</span>
+<span class="n">sk</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="c1"># 开始接收消息
+</span><span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">'server waiting...'</span>
+    <span class="c1"># conn 表示客户端与服务端建立连接后的专有通信线路
+</span>    <span class="n">conn</span><span class="p">,</span><span class="n">addr</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span> <span class="c1"># accept 属于阻塞式，没有收到连接请求就不会继续向下运行
+</span>
+    <span class="c1"># 接收客户端发来的消息
+</span>    <span class="n">client_data</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span> <span class="c1"># recv 也属于阻塞式
+</span>    <span class="k">print</span> <span class="n">client_data</span>
+
+    <span class="c1"># 回复消息
+</span>    <span class="n">conn</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="s">'服务端已收到消息！'</span><span class="p">)</span>
+
+    <span class="c1"># 关闭连接
+</span>    <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h2 id="socket-client-客户端脚本文件">socket client 客户端脚本文件</h2>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+
+<span class="n">ip_port</span> <span class="o">=</span> <span class="p">(</span><span class="s">'127.0.0.1'</span><span class="p">,</span><span class="mi">9999</span><span class="p">)</span>
+
+<span class="n">sk</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
+
+<span class="n">sk</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">ip_port</span><span class="p">)</span>
+
+<span class="n">sk</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="s">'服务器端！我是客户端...'</span><span class="p">)</span>
+
+<span class="n">server_reply</span> <span class="o">=</span> <span class="n">sk</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+
+<span class="k">print</span> <span class="n">server_reply</span>
+<span class="n">sk</span><span class="o">.</span><span class="n">close</span>
+
+</code></pre></div></div>
+
+<h2 id="python-简单-socket-通信模型过程演示">Python 简单 Socket 通信模型过程演示</h2>
+
+<h3 id="1-启动-socket-server开始监听-socket">1. 启动 Socket Server，开始监听 Socket</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@VM_15_187_centos socket]# python socket_server.py <span class="c"># 前台运行 socket_server.py, 开始监听 Socket 端口</span>
+server waiting...
+
+<span class="o">[</span>root@VM_15_187_centos socket]# netstat <span class="nt">-lntp</span> | <span class="nb">grep </span>9999 <span class="c">#  socket_server 监听 Socket IP 和端口为 127.0.0.1:9999</span>
+tcp        0      0 127.0.0.1:9999              0.0.0.0:<span class="k">*</span>                   LISTEN      17411/python  
+</code></pre></div></div>
+
+<h3 id="2-启动-socket-client向-socket-server-发送数据">2. 启动 Socket Client，向 Socket Server 发送数据</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@VM_15_187_centos socket]# python socket_client.py 
+服务端已收到消息！				<span class="c"># 此处是接收到的来自于服务端返回的消息</span>
+</code></pre></div></div>
+
+<h3 id="3-socket-server-接收到来自客户端的数据">3. Socket Server 接收到来自客户端的数据</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@VM_15_187_centos socket]# python socket_server.py 
+server waiting...
+服务器端！我是客户端...			<span class="c"># 此处是接收到的来自于客户端发送过来消息</span>
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://lilongzi.blog.51cto.com/5519072/1877897">自动化运维Python系列（七）之Socket编程</a><br />
+<a href="http://yangrong.blog.51cto.com/6945369/1339593">python socket编程详细介绍</a><br />
+<a href="https://docs.python.org/2/howto/sockets.html">Socket Programming HOWTO</a><br />
+<a href="https://docs.python.org/2/library/socket.html">17.2. socket — Low-level networking interface</a></p>
+
+:ET

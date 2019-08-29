@@ -1,0 +1,83 @@
+I"X<p>本文在 CentOS 7 下安装。</p>
+
+<h2 id="1-安装配置必要的依赖">1 安装配置必要的依赖</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>yum <span class="nb">install </span>curl policycoreutils openssh-server openssh-clients <span class="nt">-y</span>
+systemctl <span class="nb">enable </span>sshd
+systemctl start sshd
+yum <span class="nb">install </span>postfix
+systemctl <span class="nb">enable </span>postfix
+systemctl start postfix
+</code></pre></div></div>
+
+<h2 id="2-添加-gitlab-yum-源并安装-gitlab-ce-包">2 添加 GitLab yum 源并安装 GitLab-CE 包</h2>
+
+<blockquote>
+
+  <p>由于国内的网络问题，连接 GitLab 官方 yum 源比较慢，官方提示可以使用清华大学的镜像源。</p>
+</blockquote>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vim /etc/yum.repos.d/gitlab-ce.repo 
+<span class="o">[</span>gitlab-ce]
+<span class="nv">name</span><span class="o">=</span>gitlab-ce
+<span class="nv">baseurl</span><span class="o">=</span>http://mirrors.tuna.tsinghua.edu.cn/gitlab-ce/yum/el7
+<span class="nv">repo_gpgcheck</span><span class="o">=</span>0
+<span class="nv">gpgcheck</span><span class="o">=</span>0
+<span class="nv">enabled</span><span class="o">=</span>1
+<span class="nv">gpgkey</span><span class="o">=</span>https://packages.gitlab.com/gpg.key
+
+yum makecache
+yum <span class="nb">install </span>gitlab-ce <span class="nt">-y</span>
+
+</code></pre></div></div>
+
+<h2 id="3-配置启动-gitlab">3 配置启动 GitLab</h2>
+
+<blockquote>
+
+  <p>gitlab-ctl reconfigure</p>
+</blockquote>
+
+<p>可以使用 gitlab-ctl 管理 GitLab，例如查看 GitLab 状态：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@linux-node2 ~]# gitlab-ctl status
+run: gitlab-workhorse: <span class="o">(</span>pid 13513<span class="o">)</span> 40s<span class="p">;</span> run: log: <span class="o">(</span>pid 13360<span class="o">)</span> 62s
+run: logrotate: <span class="o">(</span>pid 13378<span class="o">)</span> 60s<span class="p">;</span> run: log: <span class="o">(</span>pid 13377<span class="o">)</span> 60s
+run: nginx: <span class="o">(</span>pid 13366<span class="o">)</span> 61s<span class="p">;</span> run: log: <span class="o">(</span>pid 13365<span class="o">)</span> 61s
+run: postgresql: <span class="o">(</span>pid 13017<span class="o">)</span> 266s<span class="p">;</span> run: log: <span class="o">(</span>pid 13016<span class="o">)</span> 266s
+run: redis: <span class="o">(</span>pid 12910<span class="o">)</span> 293s<span class="p">;</span> run: log: <span class="o">(</span>pid 12909<span class="o">)</span> 293s
+run: sidekiq: <span class="o">(</span>pid 13349<span class="o">)</span> 68s<span class="p">;</span> run: log: <span class="o">(</span>pid 13348<span class="o">)</span> 68s
+run: unicorn: <span class="o">(</span>pid 13687<span class="o">)</span> 3s<span class="p">;</span> run: log: <span class="o">(</span>pid 13316<span class="o">)</span> 75s
+
+</code></pre></div></div>
+
+<h2 id="4-浏览登录-gitlab">4 浏览登录 GitLab</h2>
+
+<p>第一次访问，会重定向到密码重置页面，此时设置系统管理员账号密码。默认管理员账号的用户名是 root。登录之后，可以更改用户名。</p>
+
+<h1 id="遇到的问题">遇到的问题</h1>
+
+<p>安装完成后，登录提示 502，查看 unicorn 日志，发现 8080 端口占用冲突，关掉之前环境启动的 nginx 就正常了。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">tail</span> <span class="nt">-f</span>  /var/log/gitlab/unicorn/unicorn_stderr.log 
+
+I, <span class="o">[</span>2016-08-05T11:56:59.909729 <span class="c">#15241]  INFO -- : Refreshing Gem list</span>
+E, <span class="o">[</span>2016-08-05T11:57:08.930848 <span class="c">#15241] ERROR -- : adding listener failed addr=127.0.0.1:8080 (in use)</span>
+E, <span class="o">[</span>2016-08-05T11:57:08.930938 <span class="c">#15241] ERROR -- : retrying in 0.5 seconds (4 tries left)</span>
+E, <span class="o">[</span>2016-08-05T11:57:09.432554 <span class="c">#15241] ERROR -- : adding listener failed addr=127.0.0.1:8080 (in use)</span>
+E, <span class="o">[</span>2016-08-05T11:57:09.432663 <span class="c">#15241] ERROR -- : retrying in 0.5 seconds (3 tries left)</span>
+E, <span class="o">[</span>2016-08-05T11:57:09.933172 <span class="c">#15241] ERROR -- : adding listener failed addr=127.0.0.1:8080 (in use)</span>
+E, <span class="o">[</span>2016-08-05T11:57:09.933364 <span class="c">#15241] ERROR -- : retrying in 0.5 seconds (2 tries left)</span>
+E, <span class="o">[</span>2016-08-05T11:57:10.434686 <span class="c">#15241] ERROR -- : adding listener failed addr=127.0.0.1:8080 (in use)</span>
+E, <span class="o">[</span>2016-08-05T11:57:10.434989 <span class="c">#15241] ERROR -- : retrying in 0.5 seconds (1 tries left)</span>
+E, <span class="o">[</span>2016-08-05T11:57:10.936107 <span class="c">#15241] ERROR -- : adding listener failed addr=127.0.0.1:8080 (in use)</span>
+E, <span class="o">[</span>2016-08-05T11:57:10.936261 <span class="c">#15241] ERROR -- : retrying in 0.5 seconds (0 tries left)</span>
+E, <span class="o">[</span>2016-08-05T11:57:11.437084 <span class="c">#15241] ERROR -- : adding listener failed addr=127.0.0.1:8080 (in use)</span>
+/opt/gitlab/embedded/service/gem/ruby/2.1.0/gems/unicorn-4.9.0/lib/unicorn/socket_helper.rb:185:in <span class="sb">`</span><span class="nb">bind</span><span class="s1">': Address already in use - bind(2) for 127.0.0.1:8080 (Errno::EADDRINUSE)
+</span></code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://about.gitlab.com/downloads/#centos7">Install a GitLab CE Omnibus package</a><br />
+<a href="https://mirror.tuna.tsinghua.edu.cn/help/gitlab-ce/">Gitlab Community Edition 镜像使用帮助</a></p>
+
+:ET

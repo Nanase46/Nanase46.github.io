@@ -1,0 +1,71 @@
+I"�<p>ELK-生产测试遇到的问题及解决</p>
+
+<h1 id="引言">引言</h1>
+
+<p>这几天在生产环境上部署 ELK 架构，遇到了一些问题。<br />
+这里就将它们整理记录一下以备忘。</p>
+
+<h1 id="1-logstash-报错-a-plugin-had-an-unrecoverable-error-will-restart-this-plugin">1. Logstash 报错: A plugin had an unrecoverable error. Will restart this plugin</h1>
+
+<pre>
+
+{:timestamp=&gt;"2016-10-21T03:32:02.438000+0800", :message=&gt;"A plugin had an unrecoverable error. Will restart this plugin.\n  Plugin: &lt;LogStash::Inputs::Beats port=&gt;5044, codec=&gt;&lt;LogStash::Codecs::JSON charset=&gt;\"UTF-8\"&gt;, host=&gt;\"0.0.0.0\", ssl=&gt;false, ssl_verify_mode=&gt;\"none\", include_codec_tag=&gt;true, ssl_handshake_timeout=&gt;10000, congestion_threshold=&gt;5, target_field_for_codec=&gt;\"message\", tls_min_version=&gt;1, tls_max_version=&gt;1.2, cipher_suites=&gt;[\"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA38\", \"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384\", \"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256\", \"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256\", \"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384\", \"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384\", \"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256\"], client_inactivity_timeout=&gt;15&gt;\n  Error: event executor terminated", :level=&gt;:error}
+
+</pre>
+
+<p>以上是故障日志，但看 ES 写入日志数据是正常的。</p>
+
+<p>排查过程：</p>
+
+<p>根据最小化原则，一步步精简 Logstash shipper.conf 配置文件，input 部分精简到如下，也检查了配置文件：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+input <span class="o">{</span>
+  beats <span class="o">{</span>
+    port <span class="o">=&gt;</span> 5044			
+    codec <span class="o">=&gt;</span> <span class="s2">"json"</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+<span class="o">[</span>root@Elk-logstash-shipping logstash]# /etc/init.d/logstash configtest
+Configuration OK
+
+</code></pre></div></div>
+
+<p>还是报以上错误，排查了很久，实在没想到哪里的错误。<br />
+这样到了第二天，重新开始了排查。</p>
+
+<p>首先查看 Logstash Input Beats 插件的端口监听。我停止了 Logstash，怎么还有 5044 端口监听？</p>
+
+<p>于是查看监听 5044 端口的相关连接，有很多：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@Elk-logstash-shipping ~]# lsof <span class="nt">-i</span>:5044
+COMMAND   PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+java    12180 root  132u  IPv4 152615      0t0  TCP htuidc.bgp.ip:lxi-evntsvc-&gt;htuidc.bgp.ip:57322 <span class="o">(</span>ESTABLISHED<span class="o">)</span>
+java    12180 root  135u  IPv4  44200      0t0  TCP <span class="k">*</span>:lxi-evntsvc <span class="o">(</span>LISTEN<span class="o">)</span>
+java    12180 root  139u  IPv4 152626      0t0  TCP htuidc.bgp.ip:lxi-evntsvc-&gt;htuidc.bgp.ip:46323 <span class="o">(</span>ESTABLISHED<span class="o">)</span>
+...省略...
+
+</code></pre></div></div>
+
+<p>再查看对应的进程，原来如此，这是个前台测试的 Logstash 进程还在运行，<br />
+我记起当时前台测试时，终端异常断开了网络连接，导致这个前台测试的 LogStash 进程还在运行。  <br />
+然后这个 Logstash 进程测试读取的是 <code class="highlighter-rouge">/etc/logstash/conf.d/filebeat.conf</code> 和 shipper.conf 配置文件有冲突，
+里面的 Input 部分是相同的。</p>
+
+<p><strong>解决方法：</strong><br />
+杀掉这个没有正常关闭的前台测试 Logstash 进程，然后 <code class="highlighter-rouge">/etc/init.d/logstash restart</code> 重启 Logstash。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@Elk-logstash-shipping ~]# ps aux | <span class="nb">grep </span>12180
+root     12180  1.6  4.5 6912300 744896 ?      Sl   Oct18  69:39 /usr/bin/java <span class="nt">-XX</span>:+UseParNewGC <span class="nt">-XX</span>:+UseConcMarkSweepGC <span class="nt">-Djava</span>.awt.headless<span class="o">=</span><span class="nb">true</span> <span class="nt">-XX</span>:CMSInitiatingOccupancyFraction<span class="o">=</span>75 <span class="nt">-XX</span>:+UseCMSInitiatingOccupancyOnly <span class="nt">-XX</span>:+HeapDumpOnOutOfMemoryError <span class="nt">-Xmx1g</span> <span class="nt">-Xss2048k</span> <span class="nt">-Djffi</span>.boot.library.path<span class="o">=</span>/opt/logstash/vendor/jruby/lib/jni <span class="nt">-XX</span>:+UseParNewGC <span class="nt">-XX</span>:+UseConcMarkSweepGC <span class="nt">-Djava</span>.awt.headless<span class="o">=</span><span class="nb">true</span> <span class="nt">-XX</span>:CMSInitiatingOccupancyFraction<span class="o">=</span>75 <span class="nt">-XX</span>:+UseCMSInitiatingOccupancyOnly <span class="nt">-XX</span>:+HeapDumpOnOutOfMemoryError <span class="nt">-XX</span>:HeapDumpPath<span class="o">=</span>/opt/logstash/heapdump.hprof <span class="nt">-Xbootclasspath</span>/a:/opt/logstash/vendor/jruby/lib/jruby.jar <span class="nt">-classpath</span> : <span class="nt">-Djruby</span>.home<span class="o">=</span>/opt/logstash/vendor/jruby <span class="nt">-Djruby</span>.lib<span class="o">=</span>/opt/logstash/vendor/jruby/lib <span class="nt">-Djruby</span>.script<span class="o">=</span>jruby <span class="nt">-Djruby</span>.shell<span class="o">=</span>/bin/sh org.jruby.Main <span class="nt">--1</span>.9 /opt/logstash/lib/bootstrap/environment.rb logstash/runner.rb agent <span class="nt">-f</span> /etc/logstash/conf.d/filebeat.conf
+root     16921  0.0  0.0 103244   864 pts/2    S+   15:28   0:00 <span class="nb">grep </span>12180
+<span class="o">[</span>root@Elk-logstash-shipping ~]# <span class="nb">kill </span>12180
+
+</code></pre></div></div>
+
+<p><strong>获得的经验：</strong><br />
+之前也碰过类似这个问题， <code class="highlighter-rouge">/etc/logstash/conf.d/</code> 目录下只能有 Logstash 的 YAML 格式的配置文件，不能有其他格式的文件。
+这次是有 2 个 YAML 格式的 Logstash 配置文件，但它们的内容是冲突的，所以最好在 <code class="highlighter-rouge">/etc/logstash/conf.d/</code> 目录下只放一个配置文件。</p>
+
+:ET

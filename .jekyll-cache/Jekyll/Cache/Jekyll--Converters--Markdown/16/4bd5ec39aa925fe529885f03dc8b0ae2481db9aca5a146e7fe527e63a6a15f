@@ -1,0 +1,103 @@
+I"v<p>Logstash 收集 Java 日志</p>
+
+<h1 id="在同一个配置文件指定多个-inputoutput">在同一个配置文件指定多个 input/output</h1>
+
+<p>我们演示收集 ES 的 Java 日志文件 <code class="highlighter-rouge">/var/log/elasticsearch/myes.log</code></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 /etc/logstash/conf.d]# <span class="nb">cat </span><span class="k">if</span>.conf 
+input <span class="o">{</span>
+    file <span class="o">{</span>
+        path <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"/var/log/messages"</span>,<span class="s2">"/var/log/secure"</span><span class="o">]</span>
+        <span class="nb">type</span> <span class="o">=&gt;</span> <span class="s2">"system-log"</span>
+        start_position <span class="o">=&gt;</span> <span class="s2">"beginning"</span>
+    <span class="o">}</span>
+    file <span class="o">{</span>
+        path <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"/var/log/elasticsearch/myes.log"</span><span class="o">]</span>
+        <span class="nb">type</span> <span class="o">=&gt;</span> <span class="s2">"es-log"</span>
+        start_position <span class="o">=&gt;</span> <span class="s2">"beginning"</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+filter <span class="o">{</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+    <span class="k">if</span> <span class="o">[</span><span class="nb">type</span><span class="o">]</span> <span class="o">==</span> <span class="s2">"system-log"</span> <span class="o">{</span>
+        elasticsearch <span class="o">{</span>
+            hosts <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"192.168.56.11:9200"</span><span class="o">]</span>
+            index <span class="o">=&gt;</span> <span class="s2">"system-log-%{+YYYY.MM}"</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">[</span><span class="nb">type</span><span class="o">]</span> <span class="o">==</span> <span class="s2">"es-log"</span> <span class="o">{</span>
+        elasticsearch <span class="o">{</span>
+            hosts <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"192.168.56.11:9200"</span><span class="o">]</span>
+            index <span class="o">=&gt;</span> <span class="s2">"es-log-%{+YYYY.MM}"</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>从上面的配置文件可以看到，如果在一个配置文件中要将不同的 input 输出到不同的 output，<br />
+我们这里使用了 <code class="highlighter-rouge">if [type]</code> 的判断。</p>
+
+<h1 id="使用-multiline-codec-插件收集-java-日志">使用 multiline codec 插件收集 Java 日志</h1>
+
+<p>但这里还有一个问题，Java 日志一般包含多行，这些多行应该是一个事件。<br />
+这里我们要使用一个 multiline 的 codec 插件，来实现将这些多行合并到一个字段中去。<br />
+增加  multiline 的 codec 后配置文件如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 /etc/logstash/conf.d]# <span class="nb">cat </span>java.conf 
+input <span class="o">{</span>
+    file <span class="o">{</span>
+        path <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"/var/log/messages"</span>,<span class="s2">"/var/log/secure"</span><span class="o">]</span>
+        <span class="nb">type</span> <span class="o">=&gt;</span> <span class="s2">"system-log"</span>
+        start_position <span class="o">=&gt;</span> <span class="s2">"beginning"</span>
+    <span class="o">}</span>
+    file <span class="o">{</span>
+        path <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"/var/log/elasticsearch/myes.log"</span><span class="o">]</span>
+        <span class="nb">type</span> <span class="o">=&gt;</span> <span class="s2">"es-log"</span>
+        start_position <span class="o">=&gt;</span> <span class="s2">"beginning"</span>
+        codec <span class="o">=&gt;</span> multiline <span class="o">{</span>
+            pattern <span class="o">=&gt;</span> <span class="s2">"^</span><span class="se">\[</span><span class="s2">"</span>
+            negate <span class="o">=&gt;</span> <span class="nb">true
+            </span>what <span class="o">=&gt;</span> <span class="s2">"previous"</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+filter <span class="o">{</span>
+<span class="o">}</span>
+
+output <span class="o">{</span>
+    <span class="k">if</span> <span class="o">[</span><span class="nb">type</span><span class="o">]</span> <span class="o">==</span> <span class="s2">"system-log"</span> <span class="o">{</span>
+        elasticsearch <span class="o">{</span>
+            hosts <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"192.168.56.11:9200"</span><span class="o">]</span>
+            index <span class="o">=&gt;</span> <span class="s2">"system-log-%{+YYYY.MM}"</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">[</span><span class="nb">type</span><span class="o">]</span> <span class="o">==</span> <span class="s2">"es-log"</span> <span class="o">{</span>
+        elasticsearch <span class="o">{</span>
+            hosts <span class="o">=&gt;</span> <span class="o">[</span><span class="s2">"192.168.56.11:9200"</span><span class="o">]</span>
+            index <span class="o">=&gt;</span> <span class="s2">"es-log-%{+YYYY.MM}"</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>测试时在前台指定 java.conf 调试运行 logstash，然后在 ES head 插件中确认索引及数据是否写入。</p>
+
+<h1 id="遇到的问题">遇到的问题</h1>
+
+<ol>
+  <li>配置文件中 if 后面应该接一个 {}，漏写后提示出错</li>
+  <li>不能写入 ES: <code class="highlighter-rouge">[ type ]</code> 改成 <code class="highlighter-rouge">[type]</code> 后还是不行，然后删除了对应的 .sincedb 后可以了</li>
+</ol>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://www.elastic.co/guide/en/logstash/current/plugins-codecs-multiline.html">Codec plugins » multiline</a></p>
+
+:ET

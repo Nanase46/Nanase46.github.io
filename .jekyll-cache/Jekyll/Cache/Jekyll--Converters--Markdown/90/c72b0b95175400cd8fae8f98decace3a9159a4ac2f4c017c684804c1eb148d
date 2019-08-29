@@ -1,0 +1,301 @@
+I"�9<h1 id="引言">引言</h1>
+
+<p>为什么要使用 HAProxy？因为有一些功能 Nginx 实现不了，而 HAProxy 可以。   
+Nginx 和 HAProxy 对比有下面的不足：</p>
+
+<ol>
+  <li>默认不支持自定义 URL 检测（第三方模块可以）</li>
+  <li>会话保持默认只有 ip_hash（没有 URL Hash 算法）</li>
+  <li>负载均衡算法少(rr, wrr, lc, ip_hash)</li>
+</ol>
+
+<p>HAProxy 支持如下负载均衡算法：
+<code class="highlighter-rouge">rr/wrr/lc/wlc/sh/uri/hdr(Based on HTTP header)/first</code> 等</p>
+
+<pre>
+
+no less than 9 load balancing algorithms are supported, 
+some of which apply to input data to offer an infinite list of possibilities. 
+The most common ones are round-robin (for short connections, pick each server in turn),
+leastconn (for long connections, pick the least recently used of the servers with the lowest connection count),
+source (for SSL farms or terminal server farms, the server directly depends on the client's source address), 
+uri (for HTTP caches, the server directly depends on the HTTP URI), 
+hdr (the server directly depends on the contents of a specific HTTP header field), 
+first (for short-lived virtual machines, all connections are packed on the smallest possible subset of servers 
+so that unused ones can be powered down)
+
+</pre>
+
+<p>HAProxy 支持不少于 9 种的负载均衡算法。  
+最常见的算法有：</p>
+
+<ul>
+  <li>rr 轮询算法（用于短连接，轮流选取每台服务器）</li>
+  <li>lc 最少连接数算法（用于长连接，选择含有最少连接数的最近最少使用的服务器）</li>
+  <li>source 源地址算法（用于 SSL 集群或者终端服务器集群，直接依据客户端的源 IP 地址来选择对应服务器）  </li>
+  <li>uri 算法（用于 HTTP 缓存，直接依据 HTTP URI 地址来选择对应服务器）</li>
+  <li>hdr 算法（直接依据指定的 HTTP heder 内容来选择对应服务器）  </li>
+  <li>first 算法（用于短生命周期的虚拟机，所有的连接集合到一个最小的服务器子网，没使用的服务器因此可以关机）  </li>
+</ul>
+
+<p>现在的缓存集群架构有的会在前端配置使用 Nginx 作为负载均衡器：</p>
+
+<ul>
+  <li>Nginx + Squid</li>
+  <li>Nginx + Varnish</li>
+  <li>Nginx + ATS</li>
+</ul>
+
+<p><code class="highlighter-rouge">
+因为 HAProxy 中文资料较少，所以国内的 HAProxy 并没有像 Nginx 那样使用普遍。
+</code></p>
+
+<h1 id="haproxy-安装">HAProxy 安装</h1>
+
+<p>HAProxy、Nginx 一般推荐使用最新稳定版本（一般需要编译安装）。</p>
+
+<p>本文为了演示方便，使用 yum 安装方式。</p>
+
+<p><code class="highlighter-rouge">yum install haproxy -y</code></p>
+
+<h1 id="haproxy-配置文件">HAProxy 配置文件</h1>
+
+<p>HAProxy 配置文件为 <code class="highlighter-rouge">/etc/haproxy/haproxy.cfg</code>，默认里面有比较详细的注释。
+主要下面几个配置段：</p>
+
+<ul>
+  <li>global(Global settings，进程全局级别参数)</li>
+  <li>defaults(一些常用默认值，如果在 listen 和 backend 配置段没有特别指定的话)</li>
+  <li>fronted (前端配置段)</li>
+  <li>backend (后端配置段)</li>
+</ul>
+
+<h2 id="配置-haproxy-日志记录到文件">配置 HAProxy 日志记录到文件</h2>
+
+<p>参考 Ref 中的资料，CentOS 7 下 rsyslog 配置，配置文件中注释没有说</p>
+
+<p><code class="highlighter-rouge">一般不推荐在 LB 上记录访问日志。</code></p>
+
+<h2 id="haproxy-状态页面的配置">HAProxy 状态页面的配置</h2>
+
+<p>详细看下面的配置文件内容。</p>
+
+<p>下面我们自己重新配置一下<code class="highlighter-rouge">/etc/haproxy/haproxy.cfg</code>，内容如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#---------------------------------------------------------------------</span>
+<span class="c"># Example configuration for a possible web application.  See the</span>
+<span class="c"># full configuration options online.</span>
+<span class="c">#</span>
+<span class="c">#   http://haproxy.1wt.eu/download/1.4/doc/configuration.txt</span>
+<span class="c">#</span>
+<span class="c">#---------------------------------------------------------------------</span>
+
+<span class="c">#---------------------------------------------------------------------</span>
+<span class="c"># Global settings</span>
+<span class="c">#---------------------------------------------------------------------</span>
+global
+    <span class="c"># to have these messages end up in /var/log/haproxy.log you will</span>
+    <span class="c"># need to:</span>
+    <span class="c">#</span>
+    <span class="c"># 1) configure syslog to accept network log events.  This is done</span>
+    <span class="c">#    by adding the '-r' option to the SYSLOGD_OPTIONS in</span>
+    <span class="c">#    /etc/sysconfig/syslog</span>
+    <span class="c">#</span>
+    <span class="c"># 2) configure local2 events to go to the /var/log/haproxy.log</span>
+    <span class="c">#   file. A line like the following can be added to</span>
+    <span class="c">#   /etc/sysconfig/syslog</span>
+    <span class="c">#</span>
+    <span class="c">#    local2.*                       /var/log/haproxy.log</span>
+    <span class="c">#</span>
+    log         127.0.0.1 local2
+
+    <span class="nb">chroot</span>      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+
+    <span class="c"># turn on stats unix socket</span>
+    stats socket /var/lib/haproxy/stats
+
+<span class="c">#---------------------------------------------------------------------</span>
+<span class="c"># common defaults that all the 'listen' and 'backend' sections will</span>
+<span class="c"># use if not designated in their block</span>
+<span class="c">#---------------------------------------------------------------------</span>
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option http-server-close
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    <span class="nb">timeout </span>http-request    10s
+    <span class="nb">timeout </span>queue           1m
+    <span class="nb">timeout </span>connect         10s
+    <span class="nb">timeout </span>client          1m
+    <span class="nb">timeout </span>server          1m
+    <span class="nb">timeout </span>http-keep-alive 10s
+    <span class="nb">timeout </span>check           10s
+    maxconn                 3000
+
+<span class="c"># 此处增加 HAProxy 状态页面的配置</span>
+listen stats
+    mode http
+    <span class="nb">bind </span>0.0.0.0:8888
+    stats <span class="nb">enable
+    </span>stats uri     /haproxy-status 
+    stats auth    haproxy:saltstack
+
+frontend frontend_www_example_com
+    <span class="nb">bind </span>192.168.56.11:80
+    mode http
+    option httplog
+    log global
+    default_backend backend_www_example_com
+
+backend backend_www_example_com
+    option forwardfor header X-REAL-IP
+    option httpchk HEAD / HTTP/1.0
+    balance <span class="nb">source</span>			<span class="c"># 此处表示使用源 IP HASH 负载均衡算法，用于会话保持</span>
+    server web-node1  192.168.56.11:8080 check inter 2000 rise 30 fall 15
+	<span class="c"># 上面这段配置后端服务器及相关检查，表示每 2 秒检查一次，如果连续失败了 15 次（也就是 30s），</span>
+	<span class="c"># 就把这台服务器移除集群，如果连续成功了 30 次（也就是 60s），就把这台服务器加入集群，一般加入集群检查时间要长些</span>
+	<span class="c"># 具体检查次数及时间根据实际需求配置</span>
+
+</code></pre></div></div>
+
+<p>然后启动 HAProxy <code class="highlighter-rouge">systemctl start haproxy</code>，启动成功后，便可以通过以下 URL 访问 HAProxy Web 状态页面：<br />
+http://192.168.56.11:8888/haproxy-status</p>
+
+<p><img src="http://jaminzhang.github.io/images/HAProxy/HAProxy-Status.png" alt="HAProxy-Status" /></p>
+
+<p><code class="highlighter-rouge">对比 Nginx，只有 Nginx Plus（Nginx 企业版）才有类似 HAProxy 的 Web 状态页面的 Dashboard</code></p>
+
+<h1 id="haproxy-在线维护">HAProxy 在线维护</h1>
+
+<h2 id="在线增加删除节点">在线增加、删除节点</h2>
+
+<p>配置文件<code class="highlighter-rouge">/etc/haproxy/haproxy.cfg</code> 中的 stat socket 修改如下：<br />
+<code class="highlighter-rouge">stats socket /var/lib/haproxy/haproxy.sock mode 600 level admin</code><br />
+然后重启 HAProxy <code class="highlighter-rouge">systemctl restart haproxy</code></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c"># 需要安装 socat 传递信息给 socket </span>
+<span class="o">[</span>root@linux-node1 ~]# yum <span class="nb">install </span>socat <span class="nt">-y</span>
+
+<span class="c"># 查看 help</span>
+<span class="o">[</span>root@linux-node1 ~]# <span class="nb">echo</span> <span class="s2">"help"</span> | socat stdio /var/lib/haproxy/haproxy.sock 
+Unknown command. Please enter one of the following commands only :
+  clear counters : clear max statistics counters <span class="o">(</span>add <span class="s1">'all'</span> <span class="k">for </span>all counters<span class="o">)</span>
+  clear table    : remove an entry from a table
+  <span class="nb">help</span>           : this message
+  prompt         : toggle interactive mode with prompt
+  quit           : disconnect
+  show info      : report information about the running process
+  show pools     : report information about the memory pools usage
+  show <span class="nb">stat</span>      : report counters <span class="k">for </span>each proxy and server
+  show errors    : report last request and response errors <span class="k">for </span>each proxy
+  show sess <span class="o">[</span><span class="nb">id</span><span class="o">]</span> : report the list of current sessions or dump this session
+  show table <span class="o">[</span><span class="nb">id</span><span class="o">]</span>: report table usage stats or dump this table<span class="s1">'s contents
+  get weight     : report a server'</span>s current weight
+  <span class="nb">set </span>weight     : change a server<span class="s1">'s weight
+  set server     : change a server'</span>s state or weight
+  <span class="nb">set </span>table <span class="o">[</span><span class="nb">id</span><span class="o">]</span> : update or create a table entry<span class="s1">'s data
+  set timeout    : change a timeout setting
+  set maxconn    : change a maxconn setting
+  set rate-limit : change a rate limiting value
+  disable        : put a server or frontend in maintenance mode
+  enable         : re-enable a server or frontend which is in maintenance mode
+  shutdown       : kill a session or a frontend (eg:to release listening ports)
+  show acl [id]  : report avalaible acls or dump an acl'</span>s contents
+  get acl        : reports the patterns matching a sample <span class="k">for </span>an ACL
+  add acl        : add acl entry
+  del acl        : delete acl entry
+  clear acl &lt;<span class="nb">id</span><span class="o">&gt;</span> : clear the content of this acl
+  show map <span class="o">[</span><span class="nb">id</span><span class="o">]</span>  : report avalaible maps or dump a map<span class="s1">'s contents
+  get map        : reports the keys and values matching a sample for a map
+  set map        : modify map entry
+  add map        : add map entry
+  del map        : delete map entry
+  clear map &lt;id&gt; : clear the content of this map
+  set ssl &lt;stmt&gt; : set statement for ssl
+
+# 查看 HAProxy 信息及状态
+[root@linux-node1 ~]# echo "show info;show stat" | socat stdio /var/lib/haproxy/haproxy.sock
+Name: HAProxy
+Version: 1.5.14
+Release_date: 2015/07/02
+Nbproc: 1
+Process_num: 1
+Pid: 13110
+Uptime: 0d 0h02m57s
+Uptime_sec: 177
+Memmax_MB: 0
+Ulimit-n: 8033
+Maxsock: 8033
+Maxconn: 4000
+Hard_maxconn: 4000
+CurrConns: 0
+CumConns: 2
+CumReq: 2
+MaxSslConns: 0
+CurrSslConns: 0
+CumSslConns: 0
+Maxpipes: 0
+PipesUsed: 0
+PipesFree: 0
+ConnRate: 0
+ConnRateLimit: 0
+MaxConnRate: 0
+SessRate: 0
+SessRateLimit: 0
+MaxSessRate: 0
+SslRate: 0
+SslRateLimit: 0
+MaxSslRate: 0
+SslFrontendKeyRate: 0
+SslFrontendMaxKeyRate: 0
+SslFrontendSessionReuse_pct: 0
+SslBackendKeyRate: 0
+SslBackendMaxKeyRate: 0
+SslCacheLookups: 0
+SslCacheMisses: 0
+CompressBpsIn: 0
+CompressBpsOut: 0
+CompressBpsRateLim: 0
+ZlibMemUsage: 0
+MaxZlibMemUsage: 0
+Tasks: 7
+Run_queue: 1
+Idle_pct: 100
+node: linux-node1
+description: 
+
+# pxname,svname,qcur,qmax,scur,smax,slim,stot,bin,bout,dreq,dresp,ereq,econ,eresp,wretr,wredis,status,weight,act,bck,chkfail,chkdown,lastchg,downtime,qlimit,pid,iid,sid,throttle,lbtot,tracked,type,rate,rate_lim,rate_max,check_status,check_code,check_duration,hrsp_1xx,hrsp_2xx,hrsp_3xx,hrsp_4xx,hrsp_5xx,hrsp_other,hanafail,req_rate,req_rate_max,req_tot,cli_abrt,srv_abrt,comp_in,comp_out,comp_byp,comp_rsp,lastsess,last_chk,last_agt,qtime,ctime,rtime,ttime,
+stats,FRONTEND,,,0,0,3000,0,0,0,0,0,0,,,,,OPEN,,,,,,,,,1,2,0,,,,0,0,0,0,,,,0,0,0,0,0,0,,0,0,0,,,0,0,0,0,,,,,,,,
+stats,BACKEND,0,0,0,0,300,0,0,0,0,0,,0,0,0,0,UP,0,0,0,,0,177,0,,1,2,0,,0,,1,0,,0,,,,0,0,0,0,0,0,,,,,0,0,0,0,0,0,-1,,,0,0,0,0,
+frontend_www_example_com,FRONTEND,,,0,0,3000,0,0,0,0,0,0,,,,,OPEN,,,,,,,,,1,3,0,,,,0,0,0,0,,,,0,0,0,0,0,0,,0,0,0,,,0,0,0,0,,,,,,,,
+backend_www_example_com,web-node1,0,0,0,0,,0,0,0,,0,,0,0,0,0,UP,1,1,0,0,0,177,0,,1,4,1,,0,,2,0,,0,L7OK,200,0,0,0,0,0,0,0,0,,,,0,0,,,,,-1,OK,,0,0,0,0,
+backend_www_example_com,BACKEND,0,0,0,0,300,0,0,0,0,0,,0,0,0,0,UP,1,1,0,,0,177,0,,1,4,0,,0,,1,0,,0,,,,0,0,0,0,0,0,,,,,0,0,0,0,0,0,-1,,,0,0,0,0,
+
+# 禁用一个节集群中的节点，常用于对节点进行维护操作
+[root@linux-node1 ~]# echo "disable server backend_www_example_com/web-node1" | socat stdio /var/lib/haproxy/haproxy.sock 
+
+Message from syslogd@localhost at Dec  1 14:33:26 ...
+ haproxy[13110]: backend backend_www_example_com has no server available!
+
+# 启用一个集群中的节点
+[root@linux-node1 ~]# echo "enable server backend_www_example_com/web-node1" | socat stdio /var/lib/haproxy/haproxy.sock 
+ 
+</span></code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://nginx.org/en/docs/http/load_balancing.html">Using nginx as HTTP load balancer</a><br />
+<a href="http://cbonte.github.io/haproxy-dconv/1.6/intro.html#3.3.5">Basic features : Load balancing</a><br />
+<a href="http://www.javacoder.cn/?p=840">Centos7 HAProxy 日志配置</a><br />
+<a href="http://leboit.blog.51cto.com/1465210/1695516">Centos 下 HAProxy 日志的配置</a></p>
+
+:ET

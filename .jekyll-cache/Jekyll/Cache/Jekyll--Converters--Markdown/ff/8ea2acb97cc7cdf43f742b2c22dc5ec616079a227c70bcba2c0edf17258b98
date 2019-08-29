@@ -1,0 +1,14 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>NoSQL 数据库里面比较常见的有 Memcached, Redis, MongoDB 等等，今天来了解下 MongoDB。</p>
+
+<h1 id="mongodb-简介">MongoDB 简介</h1>
+
+<pre>
+MongoDB is an open-source document database that provides high performance, high availability, 
+and automatic scaling.
+</pre>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://docs.mongodb.com/manual/introduction/">Introduction to MongoDB</a></p>
+:ET

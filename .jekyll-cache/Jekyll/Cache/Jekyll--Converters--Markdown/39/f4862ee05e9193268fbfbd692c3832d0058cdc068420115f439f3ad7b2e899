@@ -1,0 +1,67 @@
+I"1<h1 id="引言">引言</h1>
+
+<p>之前配置通过 SSH 协议连接公司内部 GitLab，遇到几个 SSH 相关的错误与提示，现在记录下来。</p>
+
+<h1 id="错误-1ssh_exchange_identification-read-connection-reset-by-peer">错误 1：<code class="highlighter-rouge">ssh_exchange_identification: read: Connection reset by peer</code></h1>
+
+<p>出现如上提示，SSH 交换认证信息阶段，连接被重置，服务器在接受公钥文件后拒绝了登录。<br />
+为了查看更详细的连接信息，使用<code class="highlighter-rouge">ssh -vv</code>的选项再次连接，输出如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@iZ25p102vo3Z ~]# ssh <span class="nt">-vv</span> gitlab.xxx.cc <span class="nt">-p</span> 59878
+OpenSSH_6.4, OpenSSL 1.0.1e-fips 11 Feb 2013
+debug1: Reading configuration data /root/.ssh/config
+debug1: /root/.ssh/config line 4: Applying options <span class="k">for </span>gitlab.xxx.cc
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: /etc/ssh/ssh_config line 51: Applying options <span class="k">for</span> <span class="k">*</span>
+debug2: ssh_connect: needpriv 0
+debug1: Connecting to gitlab.xxx.cc <span class="o">[</span>xx.xx.xx.xx] port 59878.
+debug1: Connection established.
+debug1: permanently_set_uid: 0/0
+debug1: identity file /root/.ssh/id_rsa <span class="nb">type </span>1
+debug1: identity file /root/.ssh/id_rsa-cert <span class="nb">type</span> <span class="nt">-1</span>
+debug1: Enabling compatibility mode <span class="k">for </span>protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_6.4
+ssh_exchange_identification: <span class="nb">read</span>: Connection reset by peer
+
+</code></pre></div></div>
+
+<p>第一反应就是服务器配置了<code class="highlighter-rouge">/etc/hosts.allow</code>和<code class="highlighter-rouge">/etc/hosts.deny</code>，我们连接服务器都需要通过代理连接。
+于是配置 SSH 使用 HTTP 代理来登录服务器。</p>
+
+<h1 id="提示-2pty-allocation-request-failed-on-channel-0">提示 2：<code class="highlighter-rouge">PTY allocation request failed on channel 0</code></h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@iZ25p102vo3Z .ssh]# ssh git@gitlab.xxx.cc <span class="nt">-p</span> 59878
+Enter passphrase <span class="k">for </span>key <span class="s1">'/root/.ssh/id_rsa'</span>:
+PTY allocation request failed on channel 0
+Welcome to GitLab, jamin!
+Connection to gitlab.xxx.cc closed.
+
+</code></pre></div></div>
+
+<p>分析一下以上输出，<code class="highlighter-rouge">PTY allocation request failed on channel 0</code>, PTY 是伪终端，提示伪终端请求分配失败。
+然后连接成功后输出欢迎信息，最后连接又被关闭了。</p>
+
+<p>下面是对上面输出信息的解释分析，说得比较好。</p>
+
+<pre>
+
+The “PTY allocation request failed” warning is innocuous when using command-line ssh 
+to login to a service that does not provide normal interactive access. 
+Git-over-SSH does not need a tty and GitHub’s SSH service is configured 
+to refuse to allocate one for incoming connections. 
+You can tell ssh not to ask for a tty with ssh -T git@github.com.
+
+</pre>
+
+<p><code class="highlighter-rouge">PTY allocation request failed</code>这个警告无伤大雅，它会出现是当使用命令行 SSH 登录了一个不提供正常交互式访问的服务。<br />
+基于 SSH 的 Git 不需要一个 tty, GitHub（GitLab 也应该一样）的 SSH 服务被配置成拒绝分配一个 tty 给入站连接。<br />
+你可以告诉 SSH 不要请求一个 tty，使用<code class="highlighter-rouge">ssh -T</code>的选项。</p>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://stackoverflow.com/questions/3844393/what-to-do-about-pty-allocation-request-failed-on-channel-0">What to do about “PTY allocation request failed on channel 0”</a><br />
+<a href="https://en.wikipedia.org/wiki/TTY">TTY</a><br />
+<a href="https://en.wikipedia.org/wiki/Pseudoterminal">Pseudoterminal</a></p>
+
+:ET

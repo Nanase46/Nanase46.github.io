@@ -1,0 +1,40 @@
+I"�<h1 id="1-系统基础性能监控">1 系统基础性能监控</h1>
+
+<p>可以使用 Zabbix 自带模板</p>
+
+<h1 id="2-loopback-地址绑定状态监控">2 loopback 地址绑定状态监控</h1>
+
+<p>在 LVS + Keepalived + DNS Servers 的 DNS 集群架构中，DNS Servers 作为 Real Server，在 LVS-DR 模式下，<br />
+DNS Servers 需要绑定 loopback 地址。如果 loopback 地址没有绑定上，LVS 健康检查通过后，当请求到达 DNS Server 时，<br />
+请求被拒绝，DNS 集群出现异常。</p>
+
+<h1 id="3-dns-slave-数据与-master-一致性监控">3 DNS SLAVE 数据与 MASTER 一致性监控</h1>
+
+<p>两部分：</p>
+
+<ol>
+  <li>通过写 Zabbix 自定义 discovery，扫描出 DNS 配置中所有 zone，然后分别对比 slave 和 master 每个 zone 的 serial 值，当 slave 与 master 的值持续 5 分钟不一致时报警</li>
+  <li>写脚本，每 15 分钟扫一遍 master 上所有域名解析结果，与每个 slave 的结果做对比，当出现结果不一致情况时报警</li>
+</ol>
+
+<h1 id="4-dns-响应时间监控">4 DNS 响应时间监控</h1>
+
+<p>远端一组主机跑在 default 下，通过 dig 命令检测 DNS Server 的响应时间</p>
+
+<blockquote>
+
+  <p>dig @192.168.56.13 view.viewexample.com</p>
+</blockquote>
+
+<p>在这个命令里面有一个Query time，通过它来做监控</p>
+
+<h1 id="5-dns-每秒请求数监控">5 DNS 每秒请求数监控</h1>
+
+<p>rndc stats</p>
+
+<h1 id="6-dns-可用性监控">6 DNS 可用性监控</h1>
+
+<p>远端一组主机跑在 FullNAT 下，通过 host 命令检测 DNS Server 的可用性，脚本与 LVS 健康检测脚本类似</p>
+
+<p>当当网监控 Zabbix，10000 台机器以下 Zabbix 能撑住</p>
+:ET

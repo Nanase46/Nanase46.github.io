@@ -1,0 +1,65 @@
+I"�<h1 id="引言">引言</h1>
+
+<p>前面说到以 Zabbix 做为运维监控系统，在实际的运维工作中，我们肯定有自己需要要监控的自定义项目， 
+但默认提供的模板并没有提供相关监控项，这时我们就要自己添加自定义的监控项目了。<br />
+这里我们以添加自定义监控 Nginx Status 的项目来说明 Zabbix 添加自定义监控项目的步骤。</p>
+
+<h2 id="1-配置-nginx-开启-nginx-status">1 配置 Nginx 开启 nginx status</h2>
+
+<p>Nginx 配置文件中增加如下配置：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+location /nginx-status <span class="o">{</span>
+	stub_status on<span class="p">;</span>
+	access_log   off<span class="p">;</span>
+	allow 127.0.0.1<span class="p">;</span>
+	allow 192.168.56.0/24<span class="p">;</span>
+	deny all<span class="p">;</span>
+<span class="o">}</span>	
+
+</code></pre></div></div>
+
+<p>Nginx 状态的详细解释说明，参见之前一篇文章：<a href="http://jaminzhang.github.io/nginx/understand-nginx-http-stub-status-parameters/">理解 nginx http_stub_status 相关参数</a></p>
+
+<h2 id="2-配置-nginx-status-监控脚本">2 配置 nginx status 监控脚本</h2>
+
+<p>参考脚本地址：<br />
+<a href="https://github.com/itnihao/zabbix-book/blob/master/11-chapter/nginx_monitor/scripts/nginx_status">nginx_status</a></p>
+
+<p>下载后根据自己的情况修改 nginx status 的 URL(Port/PATH)</p>
+
+<p>测试脚本能正常获取数据。</p>
+
+<h2 id="3-增加-zabbix-自定义监控项目的配置文件">3 增加 Zabbix 自定义监控项目的配置文件</h2>
+
+<p>配置文件一般放在<code class="highlighter-rouge">/etc/zabbix/zabbix_agentd.d/</code>下，  
+参考配置文件地址：<br />
+<a href="https://github.com/itnihao/zabbix-book/blob/master/11-chapter/nginx_monitor/zabbix_agentd.d/userparameter_nginx.conf">userparameter_nginx.conf </a></p>
+
+<p>内容如下：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nv">UserParameter</span><span class="o">=</span>nginx.accepts,/etc/zabbix/scripts/nginx_status accepts
+<span class="nv">UserParameter</span><span class="o">=</span>nginx.handled,/etc/zabbix/scripts/nginx_status handled
+<span class="nv">UserParameter</span><span class="o">=</span>nginx.requests,/etc/zabbix/scripts/nginx_status requests
+<span class="nv">UserParameter</span><span class="o">=</span>nginx.connections.active,/etc/zabbix/scripts/nginx_status active 
+<span class="nv">UserParameter</span><span class="o">=</span>nginx.connections.reading,/etc/zabbix/scripts/nginx_status reading
+<span class="nv">UserParameter</span><span class="o">=</span>nginx.connections.writing,/etc/zabbix/scripts/nginx_status writing
+<span class="nv">UserParameter</span><span class="o">=</span>nginx.connections.waiting,/etc/zabbix/scripts/nginx_status waiting
+
+</code></pre></div></div>
+
+<p>添加配置文件后，重启 Zabbix Agent，然后使用 zabbix_get 测试是否能获取数据，比如：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="o">[</span>root@linux-node1 ~]# zabbix_get <span class="nt">-s</span> 192.168.56.11 <span class="nt">-p</span> 10050 <span class="nt">-k</span> <span class="s2">"nginx.active"</span>
+1
+<span class="o">[</span>root@linux-node1 ~]# zabbix_get <span class="nt">-s</span> 192.168.56.11 <span class="nt">-p</span> 10050 <span class="nt">-k</span> <span class="s2">"nginx.accepts"</span>
+2246493
+
+</code></pre></div></div>
+
+<h2 id="4-在-zabbix-web-界面上添加自定义监控的-itemgraph-等等">4 在 Zabbix Web 界面上添加自定义监控的 item/graph 等等</h2>
+
+<p>这步就不截图说明了。</p>
+:ET

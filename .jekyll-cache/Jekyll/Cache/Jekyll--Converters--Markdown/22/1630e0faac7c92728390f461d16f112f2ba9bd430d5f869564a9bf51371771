@@ -1,0 +1,60 @@
+I"5<h1 id="引言">引言</h1>
+<p>昨天配置好了GitLab通过SSH协议来访问，今天我来git clone下GitLab上的库和推送一下新文件。</p>
+
+<h1 id="配置git">配置git</h1>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git config <span class="nt">--global</span> user.name <span class="s2">"&lt;用户名&gt;"</span>
+git config <span class="nt">--global</span> user.email <span class="s2">"&lt;电子邮件&gt;"</span>
+
+<span class="c">#让Git以彩色显示。</span>
+git config <span class="nt">--global</span> color.ui auto
+</code></pre></div></div>
+
+<h1 id="克隆远程数据库">克隆远程数据库</h1>
+<p>使用clone指令可以复制数据库，在<repository>指定远程数据库的URL，在<directory>指定新目录的名称。</directory></repository></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone &lt;repository&gt; &lt;directory&gt;
+</code></pre></div></div>
+
+<h1 id="提交文件">提交文件</h1>
+<p>在库目录下新增或编辑文件</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#使用status命令确认工作树和索引的状态。</span>
+git status
+
+<span class="c">#将文件加入到索引，要使用add命令。在&lt;file&gt;指定加入索引的文件。用空格分割可以指定多个文件。</span>
+git add &lt;file&gt;..
+
+<span class="c"># 指定参数「.」，可以把所有的文件加入到索引。</span>
+git add <span class="nb">.</span>
+
+<span class="c"># 提交文件</span>
+git commit <span class="nt">-m</span> <span class="s2">"COMMENT"</span>
+
+<span class="c"># 再次执行git status，看没有新的变更要提交</span>
+git status
+
+<span class="c">#使用log命令，我们可以在数据库的提交记录看到新的提交。</span>
+git log
+</code></pre></div></div>
+
+<h1 id="push到远程数据库">push到远程数据库</h1>
+
+<p>向远程数据库推送本地数据库的修改记录。
+您可以给远程数据库取一个别名。这样，下次推送的时候就不需要输入长串的远程数据库地址了。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#使用remote指令添加远程数据库。在&lt;name&gt;处输入远程数据库名称，在&lt;url&gt;处指定远程数据库的URL。</span>
+git remote add &lt;name&gt; &lt;url&gt;
+ 
+<span class="c">#使用push命令向数据库推送更改内容。&lt;repository&gt;处输入目标地址，&lt;refspec&gt;处指定推送的分支。</span>
+git push &lt;repository&gt; &lt;refspec&gt;...
+
+</code></pre></div></div>
+
+<h1 id="ref">Ref</h1>
+<p><a href="http://backlogtool.com/git-guide/cn/intro/intro2_2.html">初期设定</a><br />
+<a href="http://backlogtool.com/git-guide/cn/intro/intro4_3.html">克隆远程数据库</a><br />
+<a href="http://backlogtool.com/git-guide/cn/intro/intro2_4.html">提交文件</a><br />
+<a href="http://backlogtool.com/git-guide/cn/intro/intro4_2.html">push到远程数据库</a></p>
+
+:ET

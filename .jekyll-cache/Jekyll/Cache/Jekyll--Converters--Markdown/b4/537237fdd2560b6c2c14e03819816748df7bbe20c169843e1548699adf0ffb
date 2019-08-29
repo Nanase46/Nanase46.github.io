@@ -1,0 +1,24 @@
+I"e<h1 id="引言">引言</h1>
+
+<p>NoSQL 数据库里面比较常见的有 Memcached, Redis, MongoDB 等等，今天来了解下 Memcached。</p>
+
+<h1 id="memcached-简介">Memcached 简介</h1>
+
+<pre>
+
+What is Memcached?
+
+Free &amp; open source, high-performance, distributed memory object caching system, generic in nature, 
+but intended for use in speeding up dynamic web applications by alleviating database load.
+
+Memcached is an in-memory key-value store for small chunks of arbitrary data (strings, objects) from 
+results of database calls, API calls, or page rendering.
+
+Memcached is simple yet powerful. Its simple design promotes quick deployment, ease of development, and 
+solves many problems facing large data caches. Its API is available for most popular languages.
+
+</pre>
+
+<h1 id="ref">Ref</h1>
+<p><a href="https://memcached.org/">Memcached 官网</a></p>
+:ET
