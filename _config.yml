@@ -32,7 +32,7 @@ favicon:            /images/ranze.ico
 # Owner/Author information
 author:
   name:             lqc 
-  avatar:           /images/avatar.png
+  avatar:           /images/Ranze.png
   email:            lqc960115n@gmail.com
   # Social networking links used in footer. Update and remove as you like.
   github:           https://github.com/Nanase46     
@@ -54,7 +54,7 @@ paginate: 5
 
 
 # http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-timezone:    Asia/Shanghai
+timezone:    Asia/Tokyo
 future:      true
           
 
